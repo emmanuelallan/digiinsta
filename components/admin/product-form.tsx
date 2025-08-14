@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
-import { productSchema, type ProductFormData } from "@/schema/products"
+import { productSchema, type ProductFormData, type ProductFormInput } from "@/schema/products"
 import { upsertProduct, updateProduct } from "@/actions/admin/products"
 import type { LemonProduct, Product } from "@/types/products"
 
@@ -29,7 +29,7 @@ export function ProductForm({ lemonProduct, product, categories, onSuccess, onCa
   const defaultTitle = product?.title || lemonProduct?.attributes.name || ""
   const defaultSlug = product?.slug || slugify(defaultTitle, { lower: true, strict: true, remove: /[*+~.()'"!:@]/g })
 
-  const form = useForm<ProductFormData>({
+  const form = useForm<ProductFormInput>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       lemon_product_id: product?.lemon_product_id || lemonProduct?.id || "",
@@ -45,7 +45,8 @@ export function ProductForm({ lemonProduct, product, categories, onSuccess, onCa
 
   const availableCategories = useMemo(() => categories, [categories])
 
-  const handleSubmit = async (data: ProductFormData) => {
+  const handleSubmit = async (rawData: ProductFormInput) => {
+    const data: ProductFormData = productSchema.parse(rawData)
     setIsSubmitting(true)
     try {
       const result = isEditing ? await updateProduct({ ...data, id: product!.id }) : await upsertProduct(data)

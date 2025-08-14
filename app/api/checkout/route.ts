@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,20 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Lookup product in Supabase to get lemon_product_id
-    const { createServerClient } = await import("@supabase/ssr")
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get() {
-            return ""
-          },
-          set() {},
-          remove() {},
-        },
-      },
-    )
+    const supabase = await createClient()
 
     const { data: product, error: productErr } = await supabase
       .from("products")
@@ -129,7 +117,8 @@ export async function POST(request: NextRequest) {
 
     // Respond with the URL; client can redirect
     return NextResponse.json({ url })
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message ?? "Unexpected error" }, { status: 500 })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unexpected error"
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

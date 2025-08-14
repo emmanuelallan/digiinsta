@@ -17,3 +17,5 @@ export const updateProductSchema = productSchema.extend({
 
 export type ProductFormData = z.infer<typeof productSchema>
 export type UpdateProductFormData = z.infer<typeof updateProductSchema>
+// For client form inputs (before defaults applied)
+export type ProductFormInput = z.input<typeof productSchema>

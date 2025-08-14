@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { ArrowLeft, Download, Shield, RefreshCw } from "lucide-react"
+import { ArrowLeft, Download, Shield, RefreshCw, Heart, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -83,7 +83,7 @@ function ProductPageContent({ product }: { product: Product & { categories: Pick
           <div className="space-y-6">
             <div>
               <div className="flex gap-2 mb-3">
-                {Array.isArray((product as any).categories) && (product as any).categories.map((c: any) => (
+                {product.categories?.map((c) => (
                   <Badge key={c.id} variant="secondary">{c.title}</Badge>
                 ))}
               </div>
