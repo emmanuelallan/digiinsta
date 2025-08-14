@@ -113,16 +113,37 @@ export async function deleteCategory(id: string): Promise<{ error: string | null
 
     // Delete associated image from storage if exists
     if (category?.image_url) {
-      const imagePath = category.image_url.split("/").pop()
-      if (imagePath) {
-        await supabase.storage.from("category-images").remove([imagePath])
-      }
+      await deleteCategoryImage(category.image_url)
     }
 
     revalidatePath("/admin/categories")
     return { error: null }
   } catch (error) {
     return { error: "Failed to delete category" }
+  }
+}
+
+export async function deleteCategoryImage(imageUrl: string): Promise<{ error: string | null }> {
+  try {
+    const supabase = await createClient()
+    
+    // Extract the file path from the URL
+    const urlParts = imageUrl.split("/")
+    const fileName = urlParts[urlParts.length - 1]
+    
+    if (fileName) {
+      const { error } = await supabase.storage.from("category-images").remove([fileName])
+      
+      if (error) {
+        console.error("Failed to delete image from storage:", error)
+        // Don't return error as this is not critical for the main operation
+      }
+    }
+    
+    return { error: null }
+  } catch (error) {
+    console.error("Error deleting category image:", error)
+    return { error: "Failed to delete image" }
   }
 }
 

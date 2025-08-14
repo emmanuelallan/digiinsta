@@ -81,37 +81,48 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       <div className="space-y-4">
-        <div>
-          <Label htmlFor="title">Title</Label>
-          <Input id="title" {...form.register("title")} placeholder="Enter category title" />
+        <div className="space-y-2">
+          <Label htmlFor="title" className="text-sm font-medium text-foreground">Title</Label>
+          <Input 
+            id="title" 
+            {...form.register("title")} 
+            placeholder="Enter category title" 
+            className="h-11 px-4 text-sm border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+          />
           {form.formState.errors.title && (
             <p className="text-sm text-destructive mt-1">{form.formState.errors.title.message}</p>
           )}
         </div>
 
-        <div>
-          <Label htmlFor="slug">Slug</Label>
-          <Input id="slug" {...form.register("slug")} placeholder="category-slug" />
+        <div className="space-y-2">
+          <Label htmlFor="slug" className="text-sm font-medium text-foreground">Slug</Label>
+          <Input 
+            id="slug" 
+            {...form.register("slug")} 
+            placeholder="category-slug" 
+            className="h-11 px-4 text-sm border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+          />
           {form.formState.errors.slug && (
             <p className="text-sm text-destructive mt-1">{form.formState.errors.slug.message}</p>
           )}
         </div>
 
-        <div>
-          <Label htmlFor="description">Description</Label>
+        <div className="space-y-2">
+          <Label htmlFor="description" className="text-sm font-medium text-foreground">Description</Label>
           <Textarea
             id="description"
             {...form.register("description")}
             placeholder="Enter category description"
             rows={4}
+            className="px-4 py-3 text-sm border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none"
           />
           {form.formState.errors.description && (
             <p className="text-sm text-destructive mt-1">{form.formState.errors.description.message}</p>
           )}
         </div>
 
-        <div>
-          <Label>Category Image</Label>
+        <div className="space-y-2">
+          <Label className="text-sm font-medium text-foreground">Category Image</Label>
           <ImageUpload
             value={form.watch("image_url")}
             onChange={(url) => form.setValue("image_url", url)}
@@ -122,13 +133,13 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
           )}
         </div>
 
-        <div>
-          <Label htmlFor="status">Status</Label>
+        <div className="space-y-2">
+          <Label htmlFor="status" className="text-sm font-medium text-foreground">Status</Label>
           <Select
             value={form.watch("status")}
             onValueChange={(value: "active" | "inactive") => form.setValue("status", value)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-11 px-4 text-sm border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent>
@@ -139,11 +150,20 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
         </div>
       </div>
 
-      <div className="flex justify-end space-x-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+      <div className="flex justify-end space-x-3 pt-4">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onCancel}
+          className="h-11 px-6 text-sm font-medium border-border bg-background hover:bg-muted/50 transition-colors"
+        >
           Cancel
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button 
+          type="submit" 
+          disabled={isSubmitting}
+          className="h-11 px-6 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
           {isSubmitting ? "Saving..." : isEditing ? "Update Category" : "Create Category"}
         </Button>
       </div>
