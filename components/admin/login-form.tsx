@@ -201,7 +201,7 @@ export function LoginForm() {
                   </div>
 
                   <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
-                    <span>Didn't receive the code?</span>
+                    <span>Didn&apos;t receive the code?</span>
                     <Button
                       type="button"
                       variant="link"

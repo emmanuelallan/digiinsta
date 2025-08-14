@@ -22,8 +22,8 @@ export default function LoginPage() {
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="max-w-md px-8 py-6 bg-white/10 backdrop-blur-sm rounded-lg border border-white/20">
             <blockquote className="text-white text-lg leading-relaxed">
-              "Secure admin access with modern authentication. Built for administrators who need reliable and fast
-              access to their dashboard."
+              &quot;Secure admin access with modern authentication. Built for administrators who need reliable and fast
+              access to their dashboard.&quot;
             </blockquote>
             <div className="mt-4 flex items-center">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">

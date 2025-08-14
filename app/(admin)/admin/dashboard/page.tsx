@@ -52,11 +52,13 @@ const mockOrderData = {
   },
 }
 
+type Order = typeof mockOrderData
+
 export default function AdminDashboard() {
-  const [selectedOrder, setSelectedOrder] = useState<any>(null)
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false)
 
-  const handleViewOrder = (order: any) => {
+  const handleViewOrder = (order: Order) => {
     setSelectedOrder(order)
     setIsOrderModalOpen(true)
   }
