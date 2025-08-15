@@ -13,11 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ImageUpload } from "@/components/shared/image-upload"
 import { categorySchema, type CategoryFormData } from "@/schema/categories"
 import { createCategory, updateCategory } from "@/actions/admin/categories"
-import type { Category } from "@/types/categories"
+import type { Tables } from "@/types/supabase"
 import { toast } from "sonner"
 
 interface CategoryFormProps {
-  category?: Category
+  category?: Tables<"categories">
   onSuccess: () => void
   onCancel: () => void
 }
@@ -31,6 +31,7 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
     defaultValues: {
       title: category?.title || "",
       slug: category?.slug || "",
+      tagline: category?.tagline || "",
       description: category?.description || "",
       image_url: category?.image_url || "",
       status: category?.status || "active",
@@ -108,6 +109,19 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
         </div>
 
         <div className="space-y-2">
+          <Label htmlFor="tagline" className="text-sm font-medium text-foreground">Tagline</Label>
+          <Input 
+            id="tagline" 
+            {...form.register("tagline")} 
+            placeholder="Short tagline (optional)" 
+            className="h-11 px-4 text-sm border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+          />
+          {form.formState.errors.tagline && (
+            <p className="text-sm text-destructive mt-1">{form.formState.errors.tagline.message}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
           <Label htmlFor="description" className="text-sm font-medium text-foreground">Description</Label>
           <Textarea
             id="description"
@@ -137,14 +151,14 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
           <Label htmlFor="status" className="text-sm font-medium text-foreground">Status</Label>
           <Select
             value={form.watch("status")}
-            onValueChange={(value: "active" | "inactive") => form.setValue("status", value)}
+            onValueChange={(value: "active" | "archived") => form.setValue("status", value)}
           >
             <SelectTrigger className="h-11 px-4 text-sm border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors">
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
           </Select>
         </div>

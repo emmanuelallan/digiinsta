@@ -1,5 +1,5 @@
 import { getPublicCatalog } from "@/actions/public/products"
-import { HomeCatalog } from "@/components/public/home-catalog"
+// import { HomeCatalog } from "@/components/public/home-catalog"
 
 interface CategoryPageProps { params: Promise<{ slug: string }> }
 
@@ -17,10 +17,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
   const category = catalog.data.categories.find((c) => c.slug.toLowerCase() === slug.toLowerCase())
   return (
-    <HomeCatalog
-      products={catalog.data.products}
-      categories={catalog.data.categories}
-      initialCategoryId={category?.id}
-    />
+    // <HomeCatalog
+    //   products={catalog.data.products}
+    //   categories={catalog.data.categories}
+    //   initialCategoryId={category?.id}
+    // />
+    <p> Category Page</p>
   )
 }

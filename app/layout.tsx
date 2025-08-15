@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { Questrial, Geist_Mono } from "next/font/google";
+import { Josefin_Sans, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/shared/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import "./globals.css";
 
-const questrialSans = Questrial({
-  variable: "--font-questrial-sans",
+const josefinSans = Josefin_Sans({
+  variable: "--font-josefin-sans",
   subsets: ["latin"],
-  weight: ['400']
 });
 
 const geistMono = Geist_Mono({
@@ -29,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${questrialSans.variable} ${geistMono.variable} antialiased`}
+        className={`${josefinSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider
             attribute="class"

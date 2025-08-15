@@ -1,9 +1,13 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { categoryDbSchema, updateCategorySchema } from "@/schema/categories"
+import { categoryDbSchema, updateCategorySchema, subcategoryDbSchema, updateSubcategorySchema } from "@/schema/categories"
 import { revalidatePath } from "next/cache"
-import type { Category, CreateCategoryData, UpdateCategoryData } from "@/types/categories"
+import type { Tables, TablesInsert, TablesUpdate } from "@/types/supabase"
+
+type Category = Tables<"categories">
+type CreateCategoryData = TablesInsert<"categories">
+type UpdateCategoryData = TablesUpdate<"categories">
 
 export async function getCategories(): Promise<{ data: Category[] | null; error: string | null }> {
   try {
@@ -169,5 +173,102 @@ export async function uploadCategoryImage(file: File): Promise<{ data: string | 
     return { data: publicUrl, error: null }
   } catch (error) {
     return { data: null, error: "Failed to upload image" }
+  }
+}
+
+// Subcategories CRUD
+type Subcategory = Tables<"subcategories">
+type CreateSubcategoryData = TablesInsert<"subcategories">
+type UpdateSubcategoryData = TablesUpdate<"subcategories">
+
+export async function createSubcategory(
+  formData: CreateSubcategoryData,
+): Promise<{ data: Subcategory | null; error: string | null }> {
+  try {
+    const validatedData = subcategoryDbSchema.parse(formData)
+    const supabase = await createClient()
+
+    // unique slug check
+    const { data: existing } = await supabase
+      .from("subcategories")
+      .select("id")
+      .eq("slug", validatedData.slug)
+      .maybeSingle()
+
+    if (existing) return { data: null, error: "A subcategory with this slug already exists" }
+
+    const { data, error } = await supabase
+      .from("subcategories")
+      .insert([validatedData])
+      .select()
+      .single()
+
+    if (error) return { data: null, error: error.message }
+    revalidatePath("/admin/categories")
+    return { data, error: null }
+  } catch (error) {
+    if (error instanceof Error) return { data: null, error: error.message }
+    return { data: null, error: "Failed to create subcategory" }
+  }
+}
+
+export async function updateSubcategory(
+  formData: UpdateSubcategoryData,
+): Promise<{ data: Subcategory | null; error: string | null }> {
+  try {
+    const validatedData = updateSubcategorySchema.parse(formData)
+    const supabase = await createClient()
+
+    if (validatedData.slug) {
+      const { data: existing } = await supabase
+        .from("subcategories")
+        .select("id")
+        .eq("slug", validatedData.slug)
+        .neq("id", validatedData.id)
+        .maybeSingle()
+      if (existing) return { data: null, error: "A subcategory with this slug already exists" }
+    }
+
+    const { data, error } = await supabase
+      .from("subcategories")
+      .update(validatedData)
+      .eq("id", validatedData.id)
+      .select()
+      .single()
+    if (error) return { data: null, error: error.message }
+    revalidatePath("/admin/categories")
+    return { data, error: null }
+  } catch (error) {
+    if (error instanceof Error) return { data: null, error: error.message }
+    return { data: null, error: "Failed to update subcategory" }
+  }
+}
+
+export async function deleteSubcategory(id: string): Promise<{ error: string | null }> {
+  try {
+    const supabase = await createClient()
+    const { error } = await supabase.from("subcategories").delete().eq("id", id)
+    if (error) return { error: error.message }
+    revalidatePath("/admin/categories")
+    return { error: null }
+  } catch (error) {
+    return { error: "Failed to delete subcategory" }
+  }
+}
+
+export async function getSubcategoriesByCategory(
+  categoryId: string,
+): Promise<{ data: Subcategory[] | null; error: string | null }> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from("subcategories")
+      .select("*")
+      .eq("category_id", categoryId)
+      .order("title", { ascending: true })
+    if (error) return { data: null, error: error.message }
+    return { data, error: null }
+  } catch (error) {
+    return { data: null, error: "Failed to fetch subcategories" }
   }
 }

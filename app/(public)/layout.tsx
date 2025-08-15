@@ -1,6 +1,8 @@
 import type { Metadata } from "next"
 import { Header } from "@/components/shared/header"
+import PublicNav from "@/components/shared/public-nav"
 import { Footer } from "@/components/shared/footer"
+import { CartProvider } from "@/lib/cart-context"
 
 export const metadata: Metadata = {
   title: "DigiInsta - Digital Products Store",
@@ -14,10 +16,13 @@ export default function PublicLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="min-h-screen bg-background">
-      <Header />
-      <main className="flex-1">{children}</main>
-      <Footer />
-    </div>
+    <CartProvider>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <PublicNav />
+        <main className="flex-1">{children}</main>
+        <Footer />
+      </div>
+    </CartProvider>
   )
 } 
