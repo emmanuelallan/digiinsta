@@ -37,24 +37,17 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Redirect logged-in users away from login/auth pages
-  if (
-    user &&
-    (request.nextUrl.pathname.startsWith('/admin/auth') ||
-     request.nextUrl.pathname.startsWith('/login'))
-  ) {
+  // Since this middleware only runs on /admin routes, we can simplify the logic
+  
+  // Redirect logged-in users away from admin auth pages to dashboard
+  if (user && request.nextUrl.pathname.startsWith('/admin/auth')) {
     const url = request.nextUrl.clone()
     url.pathname = '/admin/dashboard'
     return NextResponse.redirect(url)
   }
 
-  // Redirect unauthenticated users to login page
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/admin/auth') &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/error')
-  ) {
+  // Redirect unauthenticated users trying to access admin pages (except auth) to login
+  if (!user && !request.nextUrl.pathname.startsWith('/admin/auth')) {
     const url = request.nextUrl.clone()
     url.pathname = '/admin/auth/login'
     return NextResponse.redirect(url)
