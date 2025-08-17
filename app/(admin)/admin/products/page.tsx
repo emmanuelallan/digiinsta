@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { ProductForm } from "@/components/admin/product-form"
-import { getCategories } from "@/actions/admin/categories"
+
 import { getProductsSplit, deleteProduct, getManagedBundles, deleteBundle, getLemonProductsNotInSupabase } from "@/actions/admin/products"
 import type { LemonProduct, Product, Bundle } from "@/types/products"
 import { toast } from "sonner"
@@ -35,7 +35,6 @@ export default function ProductsPage() {
   const [managed, setManaged] = useState<Product[]>([])
   const [bundles, setBundles] = useState<Bundle[]>([])
   const [unmanaged, setUnmanaged] = useState<LemonProduct[]>([])
-  const [categories, setCategories] = useState<{ id: string; title: string }[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [deletingBundle, setDeletingBundle] = useState<Bundle | null>(null)
   const [isSyncing, setIsSyncing] = useState(false)
@@ -43,18 +42,15 @@ export default function ProductsPage() {
 
   const fetchAll = async () => {
     setIsLoading(true)
-    const [splitRes, catsRes, bundlesRes] = await Promise.all([
+    const [splitRes, bundlesRes] = await Promise.all([
       getProductsSplit(),
-      getCategories(),
       getManagedBundles()
     ])
     if (splitRes.error) toast.error(splitRes.error)
-    if (catsRes.error) toast.error(catsRes.error)
     if (bundlesRes.error) toast.error(bundlesRes.error)
     setManaged(splitRes.data?.managed ?? [])
     setBundles(bundlesRes.data ?? [])
     setUnmanaged(splitRes.data?.unmanaged ?? [])
-    setCategories((catsRes.data ?? []).map((c) => ({ id: c.id, title: c.title })))
     setIsLoading(false)
   }
 
@@ -142,7 +138,7 @@ export default function ProductsPage() {
       }
       setUnmanaged(data ?? [])
       toast.success("Lemon Squeezy products refreshed")
-    } catch (error) {
+    } catch {
       toast.error("Failed to sync Lemon Squeezy products")
     } finally {
       setIsSyncing(false)

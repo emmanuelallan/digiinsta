@@ -8,7 +8,7 @@ export const productSchema = z.object({
   slug: z.string().min(1, "Slug is required").max(255, "Slug must be less than 255 characters"),
   price: z.number().int().nonnegative().nullable().optional(),
   description: z.string().nullable().optional(),
-  details: z.record(z.any()).nullable().optional(),
+  details: z.record(z.string(), z.unknown()).nullable().optional(),
   status: z.enum(["active", "draft", "archived"]).default("active"),
   is_physical: z.boolean().default(false),
   tags: z.array(z.string()).nullable().optional(),

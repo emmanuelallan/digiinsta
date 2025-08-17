@@ -17,7 +17,7 @@ import { getCategories, getSubcategoriesByCategory } from "@/actions/admin/categ
 import type { LemonProduct, Product, Bundle } from "@/types/products"
 import type { Tables } from "@/types/supabase"
 import { toast } from "sonner"
-import { Package, Tag, X, Plus } from "lucide-react"
+import { Tag, X, Plus } from "lucide-react"
 import { ProductImageUpload } from "@/components/shared/product-image-upload"
 import { ProductDescriptionEditor } from "@/components/shared/product-description-editor"
 
@@ -217,7 +217,8 @@ export function ProductForm({ lemonProduct, product, bundle, onSuccess, onCancel
       } else {
         const productData = data as ProductFormInput
         // Don't include images in the main form submission - they're handled separately
-        const { images, ...productDataWithoutImages } = productData
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { images: _, ...productDataWithoutImages } = productData
 
         if (product) {
           result = await updateProduct({ ...productDataWithoutImages, id: product.id })
@@ -233,7 +234,7 @@ export function ProductForm({ lemonProduct, product, bundle, onSuccess, onCancel
 
       toast.success(`${productType === "bundle" ? "Bundle" : "Product"} ${isEditing ? "updated" : "created"} successfully`)
       onSuccess()
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong")
     } finally {
       setIsSubmitting(false)

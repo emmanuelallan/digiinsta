@@ -4,7 +4,7 @@ import { getPublicCatalog } from "@/actions/public/products"
 interface CategoryPageProps { params: Promise<{ slug: string }> }
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
-  const { slug } = await params
+  await params
   const catalog = await getPublicCatalog()
   if (catalog.error || !catalog.data) {
     return (
@@ -15,7 +15,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     )
   }
 
-  const category = catalog.data.categories.find((c) => c.slug.toLowerCase() === slug.toLowerCase())
+  // const category = catalog.data.categories.find((c) => c.slug.toLowerCase() === slug.toLowerCase())
   return (
     // <HomeCatalog
     //   products={catalog.data.products}

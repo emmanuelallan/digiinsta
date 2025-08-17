@@ -72,7 +72,7 @@ export function CategoryForm({ category, onSuccess, onCancel }: CategoryFormProp
 
       toast.success(`Category ${isEditing ? "updated" : "created"} successfully`)
       onSuccess()
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong")
     } finally {
       setIsSubmitting(false)

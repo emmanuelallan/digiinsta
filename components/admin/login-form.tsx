@@ -8,7 +8,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/comp
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { sendOtp, verifyOtp, signInWithGoogle } from "@/actions/admin/auth"
-import { Loader2, Mail, ArrowLeft, Shield } from "lucide-react"
+import { Loader2, Mail, ArrowLeft } from "lucide-react"
 
 type Step = "email" | "otp"
 

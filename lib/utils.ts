@@ -21,13 +21,13 @@ export function mapDatabaseProductToComprehensive(dbProduct: DatabaseProduct): C
     id: parseInt(dbProduct.id) || 0,
     title: dbProduct.title,
     category: "Digital Products", // Default category since database doesn't have this
-    price: dbProduct.price || 0,
-    rating: dbProduct.rating || 4.5,
-    reviews: dbProduct.reviews || 0,
-    image: dbProduct.thumb_url || "/placeholder.svg?height=300&width=400",
+    price: (dbProduct.price || 0) / 100, // Convert from cents to dollars
+    rating: 4.5, // Default rating since database doesn't have this
+    reviews: 0, // Default reviews since database doesn't have this
+    image: dbProduct.images?.[0]?.image_url || "/placeholder.svg?height=300&width=400",
     description: dbProduct.description || "",
     tags: dbProduct.tags || [],
-    longDescription: dbProduct.description_html || dbProduct.description || "",
-    gallery: dbProduct.images || [dbProduct.thumb_url || "/placeholder.svg?height=400&width=600"].filter(Boolean),
+    longDescription: dbProduct.description || "",
+    gallery: dbProduct.images?.map(img => img.image_url) || ["/placeholder.svg?height=400&width=600"],
   }
 }

@@ -49,7 +49,7 @@ export function ImageUpload({ value, onChange, onRemove }: ImageUploadProps) {
           onChange(data)
           toast.success("Image uploaded successfully")
         }
-      } catch (error) {
+      } catch {
         toast.error("Failed to upload image")
       } finally {
         setIsUploading(false)
@@ -68,7 +68,7 @@ export function ImageUpload({ value, onChange, onRemove }: ImageUploadProps) {
       // Clear the form value
       onRemove()
       toast.success("Image removed successfully")
-    } catch (error) {
+    } catch {
       toast.error("Failed to remove image")
     } finally {
       setIsDeleting(false)

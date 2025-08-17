@@ -6,12 +6,15 @@ import { formatCurrency, mapDatabaseProductToComprehensive } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Star } from "lucide-react"
 
+interface ProductDetailsPageProps {
+  params: Promise<{ id: string }>
+}
+
 export default async function ProductDetailsPage({
   params,
-}: {
-  params: { id: string }
-}) {
-  const result = await getPublicProductById(params.id)
+}: ProductDetailsPageProps) {
+  const { id } = await params
+  const result = await getPublicProductById(id)
 
   if (result.error || !result.data) {
     return notFound()
@@ -23,7 +26,7 @@ export default async function ProductDetailsPage({
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="grid md:grid-cols-2 gap-12 items-start">
         {/* Product Gallery */}
-        <ProductGallery images={product.images || [product.thumb_url || "/placeholder.svg?height=400&width=600"].filter(Boolean)} />
+        <ProductGallery images={product.images?.map(img => img.image_url) || ["/placeholder.svg?height=400&width=600"]} />
 
         {/* Product Info */}
         <div className="space-y-6">
@@ -35,11 +38,7 @@ export default async function ProductDetailsPage({
               <p className="text-2xl md:text-3xl font-semibold text-primary">
                 {product.price ? formatCurrency(product.price) : "Price not available"}
               </p>
-              {product.original_price && (
-                <p className="text-lg text-muted-foreground line-through">
-                  {formatCurrency(product.original_price)}
-                </p>
-              )}
+
             </div>
           </div>
 
@@ -60,10 +59,12 @@ export default async function ProductDetailsPage({
             ))}
           </div>
 
-          <div
-            className="prose prose-sm sm:prose-base max-w-none text-muted-foreground"
-            dangerouslySetInnerHTML={{ __html: product.description_html || "" }}
-          />
+          {product.description && (
+            <div
+              className="prose prose-sm sm:prose-base max-w-none text-muted-foreground"
+              dangerouslySetInnerHTML={{ __html: product.description }}
+            />
+          )}
 
           <div className="pt-6">
             <BuyNowButton product={mapDatabaseProductToComprehensive(product)} />

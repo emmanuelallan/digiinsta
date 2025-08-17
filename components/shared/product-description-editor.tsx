@@ -5,8 +5,7 @@ import StarterKit from "@tiptap/starter-kit"
 import Link from "@tiptap/extension-link"
 import { Toggle } from "@/components/ui/toggle"
 import { Bold, Italic, List, ListOrdered, Quote, Minus, Link as LinkIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 
 interface ProductDescriptionEditorProps {
   value: string
@@ -14,7 +13,7 @@ interface ProductDescriptionEditorProps {
   placeholder?: string
 }
 
-export function ProductDescriptionEditor({ value, onChange, placeholder = "Write your product description here..." }: ProductDescriptionEditorProps) {
+export function ProductDescriptionEditor({ value, onChange }: ProductDescriptionEditorProps) {
   const editor = useEditor({
     immediatelyRender: false,
     extensions: [

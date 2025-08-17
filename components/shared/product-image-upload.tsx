@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { useDropzone } from "react-dropzone"
-import { X, ImageIcon, Loader2, Plus, Grid3X3 } from "lucide-react"
+import { X, Loader2, Plus, Grid3X3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { uploadProductImage, deleteProductImage } from "@/actions/admin/products"
@@ -94,7 +94,7 @@ export function ProductImageUpload({ value = [], onChange, productId }: ProductI
       // Remove from local state
       onChange(value.filter(img => img.id !== imageId))
       toast.success("Image removed successfully")
-    } catch (error) {
+    } catch {
       toast.error("Failed to remove image")
     } finally {
       setDeletingIds(prev => {

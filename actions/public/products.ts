@@ -2,7 +2,9 @@
 
 import { createClient } from "@/lib/supabase/server"
 import type { Product } from "@/types/products"
-import type { Category } from "@/types/categories"
+import type { Tables } from "@/types/supabase"
+
+type Category = Tables<"categories">
 
 export interface PublicProduct extends Product {
   categories: Pick<Category, "id" | "title" | "slug">[]
@@ -43,22 +45,48 @@ export async function getPublicCatalog(): Promise<{
   error: string | null
 }> {
   try {
-    const [productsRes, categoriesRes] = await Promise.all([getActiveProducts(), getActiveCategories()])
-    if (productsRes.error) return { data: null, error: productsRes.error }
-    if (categoriesRes.error) return { data: null, error: categoriesRes.error }
+    const supabase = await createClient()
+    
+    // Get products with their subcategories and categories in one query
+    const { data: productsWithRelations, error: productsError } = await supabase
+      .from("products")
+      .select(`
+        *,
+        subcategories!products_subcategory_id_fkey (
+          id,
+          title,
+          slug,
+          categories!subcategories_category_id_fkey (
+            id,
+            title,
+            slug
+          )
+        )
+      `)
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
 
-    const categoriesById = new Map(
-      (categoriesRes.data ?? []).map((c) => [c.id, { id: c.id, title: c.title, slug: c.slug }]),
-    )
+    if (productsError) return { data: null, error: productsError.message }
 
-    const productsWithCategories: PublicProduct[] = (productsRes.data ?? []).map((p) => ({
-      ...p,
-      categories: (p.category_ids ?? [])
-        .map((cid) => categoriesById.get(cid))
-        .filter((c): c is { id: string; title: string; slug: string } => Boolean(c)),
-    }))
+    // Get all active categories
+    const { data: categories, error: categoriesError } = await supabase
+      .from("categories")
+      .select("*")
+      .eq("status", "active")
+      .order("title", { ascending: true })
 
-    return { data: { products: productsWithCategories, categories: categoriesRes.data ?? [] }, error: null }
+    if (categoriesError) return { data: null, error: categoriesError.message }
+
+    // Transform products to include categories
+    const productsWithCategories: PublicProduct[] = (productsWithRelations ?? []).map((p) => {
+      const categories = p.subcategories?.categories ? [p.subcategories.categories] : []
+      return {
+        ...p,
+        categories: categories.map(c => ({ id: c.id, title: c.title, slug: c.slug }))
+      }
+    })
+
+    return { data: { products: productsWithCategories, categories: categories ?? [] }, error: null }
   } catch (err) {
     return { data: null, error: "Failed to build catalog" }
   }
@@ -67,19 +95,61 @@ export async function getPublicCatalog(): Promise<{
 export async function getPublicProductById(id: string): Promise<{ data: PublicProduct | null; error: string | null }> {
   try {
     const supabase = await createClient()
-    const { data: product, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle()
+    
+    // Get product with its subcategory, category, and images in one query
+    const { data: product, error } = await supabase
+      .from("products")
+      .select(`
+        *,
+        product_images (
+          id,
+          image_url,
+          caption,
+          sort_order
+        ),
+        subcategories!products_subcategory_id_fkey (
+          id,
+          title,
+          slug,
+          categories!subcategories_category_id_fkey (
+            id,
+            title,
+            slug
+          )
+        )
+      `)
+      .eq("id", id)
+      .maybeSingle()
+
     if (error) return { data: null, error: error.message }
     if (!product) return { data: null, error: "Product not found" }
 
-    const categoryIds = product.category_ids ?? []
-    const { data: categories, error: catErr } = await supabase
-      .from("categories")
-      .select("id,title,slug")
-      .in("id", categoryIds.length > 0 ? categoryIds : ["00000000-0000-0000-0000-000000000000"]) // ensure non-empty
-    if (catErr) return { data: null, error: catErr.message }
+    // Transform to include categories and images
+    const categories = product.subcategories?.categories ? [product.subcategories.categories] : []
+    
+    type ProductImageData = {
+      id: string
+      image_url: string
+      caption: string | null
+      sort_order: number | null
+    }
+    
+    const images = (product.product_images as ProductImageData[] || [])
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))
+      .map(img => ({
+        id: img.id,
+        product_id: id,
+        image_url: img.image_url,
+        caption: img.caption,
+        sort_order: img.sort_order
+      }))
 
     return {
-      data: { ...product, categories: (categories ?? []) as PublicProduct["categories"] },
+      data: {
+        ...product,
+        images,
+        categories: categories.map(c => ({ id: c.id, title: c.title, slug: c.slug }))
+      },
       error: null,
     }
   } catch (err) {
