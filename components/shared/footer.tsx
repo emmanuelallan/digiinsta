@@ -71,12 +71,12 @@ const socialLinks = [
   {
     href: "https://ko-fi.com/digiinsta",
     label: "Buy Me a Coffe",
-    icon: SiKofi
+    icon: SiKofi,
   },
   {
     href: "https://www.youtube.com/@Digiinsta",
     label: "YouTube",
-    icon: SiYoutube
+    icon: SiYoutube,
   }
 ]
 
