@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Heart, ArrowRight } from "lucide-react"
-import {SiPinterest, SiX, SiInstagram, SiFacebook} from 'react-icons/si'
+import {SiPinterest, SiX, SiInstagram, SiFacebook, SiTiktok, SiKofi, SiYoutube, SiThreads} from 'react-icons/si'
 import Image from "next/image"
 
 // Footer link data - easy to maintain and update
@@ -39,25 +39,45 @@ const footerLinks = {
 
 const socialLinks = [
   {
-    href: "https://www.instagram.com/digiinsta",
+    href: "https://www.instagram.com/digiinstastore/",
     label: "Instagram",
     icon: SiInstagram,
   },
   {
-    href: "https://www.pinterest.com/digiinsta",
+    href: "https://www.tiktok.com/@digiinstastore",
+    label: "TikTok",
+    icon: SiTiktok,
+  },
+  {
+    href: "https://www.pinterest.com/digiinstastore",
     label: "Pinterest",
     icon: SiPinterest,
   },
   {
-    href: "https://x.com/digiinsta",
+    href: "https://x.com/digiinstastore",
     label: "X (Twitter)",
     icon: SiX,
   },
   {
-    href: "https://www.facebook.com/digiinsta",
+    href: "https://www.facebook.com/digiinstastore",
     label: "Facebook",
     icon: SiFacebook,
   },
+  {
+    href: "https://www.threads.com/@digiinstastore",
+    label: "Threads",
+    icon: SiThreads,
+  },
+  {
+    href: "https://ko-fi.com/digiinsta",
+    label: "Buy Me a Coffe",
+    icon: SiKofi
+  },
+  {
+    href: "https://www.youtube.com/@Digiinsta",
+    label: "YouTube",
+    icon: SiYoutube
+  }
 ]
 
 export function Footer() {
