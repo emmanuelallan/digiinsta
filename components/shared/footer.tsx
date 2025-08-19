@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Heart, ArrowRight } from "lucide-react"
 import {SiPinterest, SiX, SiInstagram, SiFacebook, SiTiktok, SiKofi, SiYoutube, SiThreads} from 'react-icons/si'
 import Image from "next/image"
+import { Newsletter } from "@/components/public/newsletter"
 
 // Footer link data - easy to maintain and update
 const footerLinks = {
@@ -53,10 +54,15 @@ const socialLinks = [
     label: "Pinterest",
     icon: SiPinterest,
   },
+  // {
+  //   href: "https://x.com/digiinstastore",
+  //   label: "X (Twitter)",
+  //   icon: SiX,
+  // },
   {
-    href: "https://x.com/digiinstastore",
-    label: "X (Twitter)",
-    icon: SiX,
+    href: "https://www.youtube.com/@Digiinsta",
+    label: "YouTube",
+    icon: SiYoutube,
   },
   {
     href: "https://www.facebook.com/digiinstastore",
@@ -68,16 +74,11 @@ const socialLinks = [
     label: "Threads",
     icon: SiThreads,
   },
-  {
-    href: "https://ko-fi.com/digiinsta",
-    label: "Buy Me a Coffe",
-    icon: SiKofi,
-  },
-  {
-    href: "https://www.youtube.com/@Digiinsta",
-    label: "YouTube",
-    icon: SiYoutube,
-  }
+  // {
+  //   href: "https://ko-fi.com/digiinsta",
+  //   label: "Buy Me a Coffee",
+  //   icon: SiKofi,
+  // },
 ]
 
 export function Footer() {
@@ -172,28 +173,7 @@ export function Footer() {
 
         {/* Newsletter Section */}
         <div className="border-t border-border/40 pt-12 pb-8">
-          <div className="max-w-2xl mx-auto text-center space-y-6">
-            <div className="space-y-3">
-              <h3 className="text-2xl font-bold text-foreground">Stay Updated</h3>
-              <p className="text-muted-foreground leading-relaxed">
-                Get notified about new products, exclusive offers, and productivity tips delivered to your inbox.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
-              <Input
-                placeholder="Enter your email address"
-                className="flex-1 h-11 px-4 text-sm border-border bg-background focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                type="email"
-              />
-              <Button 
-                size="default" 
-                className="h-11 px-6 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors group"
-              >
-                Subscribe
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </div>
-          </div>
+          <Newsletter />
         </div>
 
         {/* Bottom Section */}

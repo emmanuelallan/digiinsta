@@ -214,6 +214,12 @@ create table if not exists hero_banners (
 );
 
 
+create table newsletter_signups (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 create index idx_orders_created_at on orders(created_at desc);
 create index idx_orders_status on orders(status);
 create index idx_orders_product_id on orders(product_id);

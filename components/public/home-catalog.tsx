@@ -138,11 +138,11 @@ export function HomeCatalog({ categories }: HomeCatalogProps) {
                           </div>
                         </div>
                         <CardContent className="text-center p-3 sm:p-4 lg:p-6">
-                          <h3 className="font-bold text-lg sm:text-xl mb-2 text-foreground group-hover:text-primary transition-colors">
+                          <h3 className="font-bold text-lg sm:text-xl mb-2 text-foreground group-hover:text-primary transition-colors capitalize">
                             {category.title}
                           </h3>
                           {category.tagline && (
-                            <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed">
+                            <p className="text-muted-foreground text-xs sm:text-sm leading-relaxed capitalize">
                               {category.tagline}
                             </p>
                           )}
