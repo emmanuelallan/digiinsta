@@ -1,20 +1,8 @@
+import { withPayload } from "@payloadcms/next/withPayload";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'cdn.lemonsqueezy.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'ulxxhydpaxuhvlcjankh.supabase.co',
-        pathname: '/**',
-      },
-    ],
-  },
+  /* config options here */
 };
 
-export default nextConfig;
+export default withPayload(nextConfig);
