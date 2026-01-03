@@ -10,6 +10,7 @@ export {
   getNewArrivals,
   getEditorsPicks,
   getBestSellers,
+  getSaleProducts,
   getRelatedProducts,
   searchProducts,
   getProductsByCategory,
@@ -34,12 +35,7 @@ export {
 } from "./categories";
 
 // Bundle utilities
-export {
-  getBundles,
-  getBundleBySlug,
-  getFeaturedBundle,
-  searchBundles,
-} from "./bundles";
+export { getBundles, getBundleBySlug, getFeaturedBundle, searchBundles } from "./bundles";
 
 // Hero utilities
 export { getHeroSlides } from "./hero";

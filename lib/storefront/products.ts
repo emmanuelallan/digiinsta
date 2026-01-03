@@ -244,6 +244,31 @@ export async function getBestSellers(limit = 8): Promise<StorefrontProduct[]> {
 }
 
 /**
+ * Get products on sale (products where compareAtPrice > price)
+ */
+export async function getSaleProducts(limit = 24): Promise<StorefrontProduct[]> {
+  const payload = await getPayloadClient();
+
+  const result = await payload.find({
+    collection: "products",
+    where: {
+      status: { equals: "active" },
+      compareAtPrice: { exists: true },
+    },
+    sort: "-createdAt",
+    limit: limit * 2, // Fetch more to filter
+    depth: 3,
+  });
+
+  // Filter for products where compareAtPrice > price (actually on sale)
+  const saleProducts = result.docs.filter(
+    (product) => product.price && product.compareAtPrice && product.compareAtPrice > product.price
+  );
+
+  return saleProducts.slice(0, limit).map(transformProduct);
+}
+
+/**
  * Get related products for a given product (same subcategory)
  */
 export async function getRelatedProducts(
