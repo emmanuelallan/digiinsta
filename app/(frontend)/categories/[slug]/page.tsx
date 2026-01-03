@@ -1,0 +1,185 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import Image from "next/image";
+import { getCategoryBySlug, getProductsGroupedBySubcategory } from "@/lib/storefront";
+import { ProductGrid } from "@/components/storefront/product";
+import { NoProductsFound } from "@/components/storefront/shared";
+import { Button } from "@/components/ui/button";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+
+interface CategoryPageProps {
+  params: Promise<{ slug: string }>;
+}
+
+// Feature badges data
+const featureBadges = [
+  {
+    icon: "/images/icons/human.svg",
+    title: "100% Human",
+    subtitle: "Crafted",
+  },
+  {
+    icon: "/images/icons/layout.svg",
+    title: "Proven",
+    subtitle: "Layouts",
+  },
+  {
+    icon: "/images/icons/customizable.svg",
+    title: "Highly",
+    subtitle: "Customizable",
+  },
+  {
+    icon: "/images/icons/kenya.svg",
+    title: "Designed in",
+    subtitle: "Kenya",
+  },
+];
+
+export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const category = await getCategoryBySlug(slug);
+
+  if (!category) {
+    return {
+      title: "Category Not Found",
+    };
+  }
+
+  return {
+    title: category.title,
+    description: category.description ?? `Browse ${category.title} products at DigiInsta`,
+  };
+}
+
+export default async function CategoryPage({ params }: CategoryPageProps) {
+  const { slug } = await params;
+  const category = await getCategoryBySlug(slug);
+
+  if (!category) {
+    notFound();
+  }
+
+  const groupedProducts = await getProductsGroupedBySubcategory(slug, 12);
+
+  return (
+    <div className="bg-background">
+      {/* Hero Header */}
+      <section className="bg-muted/30 py-10 lg:py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {/* Breadcrumb */}
+          <Breadcrumb className="mb-6">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link href="/">Home</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link href="/categories">Categories</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{category.title}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
+          {/* Header Content */}
+          <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+            {/* Left: Category Info */}
+            <div className="max-w-xl">
+              <h1 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl">
+                {category.title}
+              </h1>
+              {category.description && (
+                <p className="text-muted-foreground mt-4 text-base">{category.description}</p>
+              )}
+            </div>
+
+            {/* Right: Feature Badges */}
+            <div className="flex flex-wrap gap-6 lg:gap-8">
+              {featureBadges.map((badge, index) => (
+                <div key={index} className="flex min-w-[70px] flex-col items-center text-center">
+                  <div className="mb-2 h-10 w-10">
+                    <Image
+                      src={badge.icon}
+                      alt={badge.title}
+                      width={40}
+                      height={40}
+                      className="h-full w-full object-contain dark:invert"
+                    />
+                  </div>
+                  <span className="text-foreground text-xs font-semibold tracking-wide uppercase">
+                    {badge.title}
+                  </span>
+                  <span className="text-muted-foreground text-xs tracking-wide uppercase">
+                    {badge.subtitle}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Products Section */}
+      <section className="py-10 lg:py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {groupedProducts.length === 0 ? (
+            <NoProductsFound />
+          ) : (
+            <div className="space-y-16">
+              {groupedProducts.map((group) => (
+                <div key={group.subcategory.id}>
+                  {/* Subcategory Header */}
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-foreground text-xl font-bold sm:text-2xl">
+                        {group.subcategory.title}
+                      </h2>
+                      {group.subcategory.description && (
+                        <p className="text-muted-foreground mt-1 text-sm">
+                          {group.subcategory.description}
+                        </p>
+                      )}
+                    </div>
+                    {group.totalProducts > 12 && (
+                      <Link href={`/subcategories/${group.subcategory.slug}`}>
+                        <Button variant="outline" size="sm">
+                          View all {group.subcategory.title} →
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+
+                  {/* Products Grid */}
+                  <ProductGrid products={group.products} columns={4} />
+
+                  {/* View More Button (mobile) */}
+                  {group.totalProducts > 12 && (
+                    <div className="mt-6 text-center lg:hidden">
+                      <Link href={`/subcategories/${group.subcategory.slug}`}>
+                        <Button variant="outline">View all {group.totalProducts} products →</Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}

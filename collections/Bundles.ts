@@ -11,19 +11,17 @@ export const Bundles: CollectionConfig = {
   slug: "bundles",
   admin: {
     useAsTitle: "title",
-    defaultColumns: ["title", "slug", "polarProductId", "status"],
+    defaultColumns: ["title", "slug", "status", "createdBy"],
   },
   access: {
-    // Public can read active bundles
     read: () => true,
-    // Only admins can create/update/delete
     create: isAdmin,
     update: isAdmin,
     delete: isAdmin,
   },
   hooks: {
     beforeChange: [
-      ({ data }) => {
+      ({ data, req }) => {
         // Auto-generate slug from title if not provided
         if (data?.title && !data?.slug) {
           data.slug = data.title
@@ -32,6 +30,10 @@ export const Bundles: CollectionConfig = {
             .replace(/[^a-z0-9-]/g, "")
             .replace(/-+/g, "-")
             .replace(/^-|-$/g, "");
+        }
+        // Auto-set createdBy to current user on create
+        if (req.user && !data?.createdBy) {
+          data.createdBy = req.user.id;
         }
         return data;
       },
@@ -49,7 +51,7 @@ export const Bundles: CollectionConfig = {
       required: true,
       unique: true,
       admin: {
-        description: "URL-friendly identifier",
+        description: "URL-friendly identifier (auto-generated from title)",
       },
     },
     {
@@ -73,6 +75,23 @@ export const Bundles: CollectionConfig = {
       },
     },
     {
+      name: "price",
+      type: "number",
+      required: true,
+      min: 0,
+      admin: {
+        description: "Bundle price in cents (e.g., 2999 = $29.99). Must match Polar price.",
+      },
+    },
+    {
+      name: "compareAtPrice",
+      type: "number",
+      min: 0,
+      admin: {
+        description: "Original price in cents (sum of individual products) for savings display",
+      },
+    },
+    {
       name: "products",
       type: "relationship",
       relationTo: "products",
@@ -88,6 +107,17 @@ export const Bundles: CollectionConfig = {
       relationTo: "media",
     },
     {
+      name: "createdBy",
+      type: "relationship",
+      relationTo: "users",
+      required: true,
+      admin: {
+        description: "Bundle creator - auto-set to current user",
+        readOnly: true,
+        position: "sidebar",
+      },
+    },
+    {
       name: "status",
       type: "select",
       options: [
@@ -97,29 +127,6 @@ export const Bundles: CollectionConfig = {
       ],
       defaultValue: "draft",
       required: true,
-    },
-    // SEO fields
-    {
-      name: "metaTitle",
-      type: "text",
-      admin: {
-        description: "SEO title (overrides default)",
-      },
-    },
-    {
-      name: "metaDescription",
-      type: "textarea",
-      admin: {
-        description: "SEO meta description",
-      },
-    },
-    {
-      name: "ogImage",
-      type: "upload",
-      relationTo: "media",
-      admin: {
-        description: "Open Graph image",
-      },
     },
   ],
   timestamps: true,

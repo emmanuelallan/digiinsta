@@ -1,130 +1,74 @@
-import type { Metadata } from "next";
-
-export interface SEOData {
-  title?: string;
-  description?: string;
-  image?: string;
-  url?: string;
-  type?: "website" | "product" | "category";
-  publishedTime?: string;
-  modifiedTime?: string;
-  price?: {
-    amount: string;
-    currency: string;
-  };
-  category?: string;
-}
+import type {
+  GenerateTitle,
+  GenerateDescription,
+  GenerateImage,
+  GenerateURL,
+} from "@payloadcms/plugin-seo/types";
 
 /**
- * Generate metadata for pages
+ * Generates SEO title in format "DigiInsta — {document title}"
  */
-export function generateMetadata(data: SEOData, defaults?: Partial<SEOData>): Metadata {
-  const title = data.title || defaults?.title || "Digital Products";
-  const description = data.description || defaults?.description || "";
-  const image = data.image || defaults?.image || "";
-  const url = data.url || defaults?.url || "";
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      url,
-      siteName: "Digital Products",
-      images: image ? [{ url: image }] : [],
-      type: (data.type === "product" || data.type === "category" ? "website" : data.type) || "website",
-      ...(data.publishedTime && { publishedTime: data.publishedTime }),
-      ...(data.modifiedTime && { modifiedTime: data.modifiedTime }),
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: image ? [image] : [],
-    },
-    alternates: {
-      canonical: url,
-    },
-  };
-}
+export const generateTitle: GenerateTitle = ({ doc }) => {
+  const title = (doc as { title?: string })?.title;
+  return `DigiInsta — ${title || "Untitled"}`;
+};
 
 /**
- * Generate JSON-LD structured data
+ * Generates SEO description from shortDescription (products/bundles) or excerpt (posts)
  */
-interface ProductData {
-  name: string;
-  description: string;
-  image: string;
-  price?: {
-    amount: string;
-    currency: string;
+export const generateDescription: GenerateDescription = ({ doc }) => {
+  const document = doc as {
+    shortDescription?: string;
+    excerpt?: string;
   };
-  category?: string;
-}
+  return document?.shortDescription || document?.excerpt || "";
+};
 
-interface CategoryData {
-  name: string;
-  description: string;
-}
+/**
+ * Generates SEO image from featuredImage, heroImage, or first product image
+ * Returns the image ID or relationship object for the plugin
+ */
+export const generateImage: GenerateImage = ({ doc }) => {
+  const document = doc as {
+    featuredImage?: string | { id: string };
+    heroImage?: string | { id: string };
+    images?: Array<{ image?: string | { id: string } }>;
+  };
 
-interface BreadcrumbData {
-  items: Array<{ name: string; url: string }>;
-}
-
-export function generateJsonLd(data: {
-  type: "Product";
-  data: ProductData;
-} | {
-  type: "Category";
-  data: CategoryData;
-} | {
-  type: "BreadcrumbList";
-  data: BreadcrumbData;
-}): object {
-  switch (data.type) {
-    case "Product": {
-      return {
-        "@context": "https://schema.org",
-        "@type": "Product",
-        name: data.data.name,
-        description: data.data.description,
-        image: data.data.image,
-        ...(data.data.price && {
-          offers: {
-            "@type": "Offer",
-            price: data.data.price.amount,
-            priceCurrency: data.data.price.currency,
-            availability: "https://schema.org/InStock",
-          },
-        }),
-        ...(data.data.category && {
-          category: data.data.category,
-        }),
-      };
-    }
-    case "Category": {
-      return {
-        "@context": "https://schema.org",
-        "@type": "CollectionPage",
-        name: data.data.name,
-        description: data.data.description,
-      };
-    }
-    case "BreadcrumbList": {
-      return {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        itemListElement: data.data.items.map((item: { name: string; url: string }, index: number) => ({
-          "@type": "ListItem",
-          position: index + 1,
-          name: item.name,
-          item: item.url,
-        })),
-      };
-    }
-    default:
-      return {};
+  if (document?.featuredImage) {
+    return typeof document.featuredImage === "string"
+      ? document.featuredImage
+      : document.featuredImage.id;
   }
-}
+  if (document?.heroImage) {
+    return typeof document.heroImage === "string"
+      ? document.heroImage
+      : document.heroImage.id;
+  }
+  if (document?.images?.[0]?.image) {
+    const firstImage = document.images[0].image;
+    return typeof firstImage === "string" ? firstImage : firstImage.id;
+  }
+  // Return empty string when no image found (plugin expects non-undefined)
+  return "";
+};
 
+/**
+ * Generates preview URL based on collection type
+ * - products: /products/{slug}
+ * - posts: /blog/{slug}
+ * - bundles: /bundles/{slug}
+ */
+export const generateURL: GenerateURL = ({ doc, collectionSlug }) => {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://digiinsta.com";
+  const slug = (doc as { slug?: string })?.slug || "";
+
+  const pathMap: Record<string, string> = {
+    products: "products",
+    posts: "blog",
+    bundles: "bundles",
+  };
+
+  const path = pathMap[collectionSlug ?? ""] || collectionSlug;
+  return `${baseUrl}/${path}/${slug}`;
+};

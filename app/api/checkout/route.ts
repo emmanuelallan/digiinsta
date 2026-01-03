@@ -1,0 +1,111 @@
+/**
+ * Checkout API Route
+ * Creates Polar checkout sessions for cart items
+ */
+
+import { type NextRequest, NextResponse } from "next/server";
+import { Polar } from "@polar-sh/sdk";
+
+// Initialize Polar client
+function getPolarClient() {
+  const accessToken = process.env.POLAR_ACCESS_TOKEN;
+
+  if (!accessToken) {
+    throw new Error("POLAR_ACCESS_TOKEN is not configured");
+  }
+
+  return new Polar({
+    accessToken,
+    server: process.env.NODE_ENV === "production" ? "production" : "sandbox",
+  });
+}
+
+interface CheckoutItem {
+  polarProductId: string;
+  productId: number;
+  type: "product" | "bundle";
+}
+
+interface CheckoutRequest {
+  items: CheckoutItem[];
+  customerEmail?: string;
+  metadata?: Record<string, string>;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body: CheckoutRequest = await request.json();
+    const { items, customerEmail, metadata } = body;
+
+    // Validate items
+    if (!items || items.length === 0) {
+      return NextResponse.json({ error: "No items provided" }, { status: 400 });
+    }
+
+    // Validate Polar product IDs
+    const invalidItems = items.filter((item) => !item.polarProductId);
+    if (invalidItems.length > 0) {
+      return NextResponse.json(
+        { error: "Some items are missing Polar product IDs" },
+        { status: 400 }
+      );
+    }
+
+    // Get Polar client
+    const polar = getPolarClient();
+
+    // Extract Polar product IDs
+    const productIds = items.map((item) => item.polarProductId);
+
+    // Build metadata for webhook processing
+    const checkoutMetadata: Record<string, string> = {
+      ...metadata,
+      // Store product info for webhook processing
+      items: JSON.stringify(
+        items.map((item) => ({
+          productId: item.productId,
+          type: item.type,
+          polarProductId: item.polarProductId,
+        }))
+      ),
+    };
+
+    // Get success URL
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+    // Create Polar checkout session
+    const checkout = await polar.checkouts.create({
+      products: productIds,
+      customerEmail,
+      metadata: checkoutMetadata,
+      successUrl: `${appUrl}/checkout/success?checkout_id={CHECKOUT_ID}`,
+    });
+
+    return NextResponse.json({
+      checkoutId: checkout.id,
+      checkoutUrl: checkout.url,
+    });
+  } catch (error) {
+    console.error("Checkout creation error:", error);
+
+    // Handle specific error types
+    if (error instanceof Error) {
+      // Check for auth errors
+      if (error.message.includes("401") || error.message.includes("invalid_token")) {
+        return NextResponse.json(
+          { error: "Payment service authentication failed. Please contact support." },
+          { status: 503 }
+        );
+      }
+
+      // Check for missing config
+      if (error.message.includes("POLAR_ACCESS_TOKEN")) {
+        return NextResponse.json({ error: "Payment service not configured" }, { status: 503 });
+      }
+
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ error: "Failed to create checkout" }, { status: 500 });
+  }
+}

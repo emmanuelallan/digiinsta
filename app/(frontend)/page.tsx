@@ -1,57 +1,61 @@
-import { headers as getHeaders } from "next/headers.js";
-import Image from "next/image";
-import { getPayload } from "payload";
-import { fileURLToPath } from "url";
+import { Suspense } from "react";
+import {
+  HeroSection,
+  PersonaCards,
+  NewArrivals,
+  EditorsPick,
+  BestSellers,
+  BundleBanner,
+  BundleShowcase,
+} from "@/components/storefront";
+import {
+  ProductTraySkeleton,
+  BundleBannerSkeleton,
+  BundleShowcaseSkeleton,
+} from "@/components/storefront/shared";
+import { getCategoriesWithCounts } from "@/lib/storefront";
 
-import config from "@/payload.config";
+export const metadata = {
+  title: "DigiInsta - Premium Digital Products & Templates",
+  description:
+    "Discover premium digital templates, planners, and tools designed by experts. Transform your productivity, finances, and goals with beautifully crafted resources.",
+};
 
 export default async function HomePage() {
-  const headers = await getHeaders();
-  const payloadConfig = await config;
-  const payload = await getPayload({ config: payloadConfig });
-  const { user } = await payload.auth({ headers });
-
-  const fileURL = `vscode://file/${fileURLToPath(import.meta.url)}`;
+  const categories = await getCategoriesWithCounts();
 
   return (
-    <div className="home">
-      <div className="content">
-        <picture>
-          <source srcSet="https://raw.githubusercontent.com/payloadcms/payload/main/packages/ui/src/assets/payload-favicon.svg" />
-          <Image
-            alt="Payload Logo"
-            height={65}
-            src="https://raw.githubusercontent.com/payloadcms/payload/main/packages/ui/src/assets/payload-favicon.svg"
-            width={65}
-          />
-        </picture>
-        {!user && <h1>Welcome to your new project.</h1>}
-        {user && <h1>Welcome back, {user.email}</h1>}
-        <div className="links">
-          <a
-            className="admin"
-            href={payloadConfig.routes.admin}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Go to admin panel
-          </a>
-          <a
-            className="docs"
-            href="https://payloadcms.com/docs"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Documentation
-          </a>
-        </div>
-      </div>
-      <div className="footer">
-        <p>Update this page by editing</p>
-        <a className="codeLink" href={fileURL}>
-          <code>app/(frontend)/page.tsx</code>
-        </a>
-      </div>
-    </div>
+    <main className="flex flex-col">
+      {/* Hero Section */}
+      <HeroSection categories={categories} />
+
+      {/* Best Sellers - between Hero and Persona */}
+      <Suspense fallback={<ProductTraySkeleton className="py-16 lg:py-24" />}>
+        <BestSellers className="py-16 lg:py-24" />
+      </Suspense>
+
+      {/* Shop by Persona */}
+      <PersonaCards className="bg-muted/30 py-16 lg:py-24" />
+
+      {/* New Arrivals */}
+      <Suspense fallback={<ProductTraySkeleton className="py-16 lg:py-24" />}>
+        <NewArrivals className="py-16 lg:py-24" />
+      </Suspense>
+
+      {/* Bundle Promotion Banner */}
+      <Suspense fallback={<BundleBannerSkeleton className="bg-muted/30 py-16 lg:py-24" />}>
+        <BundleBanner className="bg-muted/30 py-16 lg:py-24" />
+      </Suspense>
+
+      {/* Editor's Pick */}
+      <Suspense fallback={<ProductTraySkeleton className="py-16 lg:py-24" />}>
+        <EditorsPick className="py-16 lg:py-24" />
+      </Suspense>
+
+      {/* Bundle Showcase */}
+      <Suspense fallback={<BundleShowcaseSkeleton className="bg-muted/30 py-16 lg:py-24" />}>
+        <BundleShowcase className="bg-muted/30 py-16 lg:py-24" />
+      </Suspense>
+    </main>
   );
 }

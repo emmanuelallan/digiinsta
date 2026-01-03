@@ -16,7 +16,6 @@ const isAdminOrOwner: Access = ({ req: { user } }) => {
   if (!user) return false;
   const userRole = (user as unknown as { role?: string }).role;
   if (userRole === "admin") return true;
-  // Users can only see their own orders
   return {
     email: {
       equals: user.email,
@@ -32,19 +31,20 @@ export const Orders: CollectionConfig = {
       "polarOrderId",
       "email",
       "status",
-      "ownerAttribution",
       "totalAmount",
+      "createdBy",
       "createdAt",
     ],
+    // Hide create button - orders are created automatically via webhooks
+    hidden: false,
+    description:
+      "Orders are created automatically when customers complete checkout. Do not create manually.",
   },
   access: {
-    // Admins can read all, users can read their own orders
     read: isAdminOrOwner,
-    // Only system/webhooks should create orders (handled via local API)
-    create: isAdmin,
-    // Only admins can update orders
+    // Disable manual creation - orders come from webhooks only
+    create: () => false,
     update: isAdmin,
-    // Only admins can delete orders
     delete: isAdmin,
   },
   fields: [
@@ -55,6 +55,7 @@ export const Orders: CollectionConfig = {
       unique: true,
       admin: {
         description: "Polar.sh order ID",
+        readOnly: true,
       },
     },
     {
@@ -62,6 +63,7 @@ export const Orders: CollectionConfig = {
       type: "text",
       admin: {
         description: "Polar.sh checkout ID",
+        readOnly: true,
       },
     },
     {
@@ -70,6 +72,7 @@ export const Orders: CollectionConfig = {
       required: true,
       admin: {
         description: "Customer email",
+        readOnly: true,
       },
     },
     {
@@ -79,6 +82,7 @@ export const Orders: CollectionConfig = {
       required: false,
       admin: {
         description: "Payload user (null for guest checkout)",
+        readOnly: true,
       },
     },
     {
@@ -97,6 +101,9 @@ export const Orders: CollectionConfig = {
       name: "items",
       type: "array",
       required: true,
+      admin: {
+        readOnly: true,
+      },
       fields: [
         {
           name: "type",
@@ -144,18 +151,12 @@ export const Orders: CollectionConfig = {
           type: "number",
           defaultValue: 5,
           required: true,
-          admin: {
-            description: "Maximum number of downloads allowed",
-          },
         },
         {
           name: "downloadsUsed",
           type: "number",
           defaultValue: 0,
           required: true,
-          admin: {
-            description: "Number of downloads used",
-          },
         },
       ],
     },
@@ -172,6 +173,7 @@ export const Orders: CollectionConfig = {
       required: true,
       admin: {
         description: "Total amount in cents",
+        readOnly: true,
       },
     },
     {
@@ -179,6 +181,9 @@ export const Orders: CollectionConfig = {
       type: "text",
       defaultValue: "usd",
       required: true,
+      admin: {
+        readOnly: true,
+      },
     },
     {
       name: "fulfilled",
@@ -189,15 +194,13 @@ export const Orders: CollectionConfig = {
       },
     },
     {
-      name: "ownerAttribution",
-      type: "select",
-      options: [
-        { label: "ME", value: "ME" },
-        { label: "PARTNER", value: "PARTNER" },
-      ],
-      required: true,
+      name: "createdBy",
+      type: "relationship",
+      relationTo: "users",
       admin: {
-        description: "Revenue attribution - who gets credit for this sale",
+        description: "Product creator who gets revenue attribution",
+        readOnly: true,
+        position: "sidebar",
       },
     },
   ],

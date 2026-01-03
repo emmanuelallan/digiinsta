@@ -11,19 +11,17 @@ export const Products: CollectionConfig = {
   slug: "products",
   admin: {
     useAsTitle: "title",
-    defaultColumns: ["title", "slug", "polarProductId", "owner", "status"],
+    defaultColumns: ["title", "slug", "subcategory", "status", "createdBy"],
   },
   access: {
-    // Public can read active products
     read: () => true,
-    // Only admins can create/update/delete
     create: isAdmin,
     update: isAdmin,
     delete: isAdmin,
   },
   hooks: {
     beforeChange: [
-      ({ data }) => {
+      ({ data, req }) => {
         // Auto-generate slug from title if not provided
         if (data?.title && !data?.slug) {
           data.slug = data.title
@@ -32,6 +30,10 @@ export const Products: CollectionConfig = {
             .replace(/[^a-z0-9-]/g, "")
             .replace(/-+/g, "-")
             .replace(/^-|-$/g, "");
+        }
+        // Auto-set createdBy to current user on create
+        if (req.user && !data?.createdBy) {
+          data.createdBy = req.user.id;
         }
         return data;
       },
@@ -49,7 +51,7 @@ export const Products: CollectionConfig = {
       required: true,
       unique: true,
       admin: {
-        description: "URL-friendly identifier",
+        description: "URL-friendly identifier (auto-generated from title)",
       },
     },
     {
@@ -64,22 +66,23 @@ export const Products: CollectionConfig = {
       },
     },
     {
-      name: "category",
+      name: "subcategory",
       type: "relationship",
-      relationTo: "categories",
-      required: true,
-    },
-    {
-      name: "owner",
-      type: "select",
-      options: [
-        { label: "ME", value: "ME" },
-        { label: "PARTNER", value: "PARTNER" },
-      ],
-      defaultValue: "ME",
+      relationTo: "subcategories",
       required: true,
       admin: {
-        description: "Product creator - used for revenue attribution",
+        description: "Product subcategory (determines the parent category)",
+      },
+    },
+    {
+      name: "createdBy",
+      type: "relationship",
+      relationTo: "users",
+      required: true,
+      admin: {
+        description: "Product creator - auto-set to current user",
+        readOnly: true,
+        position: "sidebar",
       },
     },
     {
@@ -92,18 +95,29 @@ export const Products: CollectionConfig = {
       },
     },
     {
-      name: "fileKey",
-      type: "text",
+      name: "price",
+      type: "number",
       required: true,
+      min: 0,
       admin: {
-        description: "R2 storage key/path for the product file",
+        description: "Price in cents (e.g., 999 = $9.99). Must match Polar price.",
       },
     },
     {
-      name: "fileSize",
+      name: "compareAtPrice",
       type: "number",
+      min: 0,
       admin: {
-        description: "File size in bytes",
+        description: "Original price in cents for sale display (optional)",
+      },
+    },
+    {
+      name: "file",
+      type: "upload",
+      relationTo: "media",
+      required: true,
+      admin: {
+        description: "Downloadable product file (PDF, ZIP, etc.)",
       },
     },
     {
@@ -142,29 +156,6 @@ export const Products: CollectionConfig = {
           type: "text",
         },
       ],
-    },
-    // SEO fields
-    {
-      name: "metaTitle",
-      type: "text",
-      admin: {
-        description: "SEO title (overrides default)",
-      },
-    },
-    {
-      name: "metaDescription",
-      type: "textarea",
-      admin: {
-        description: "SEO meta description",
-      },
-    },
-    {
-      name: "ogImage",
-      type: "upload",
-      relationTo: "media",
-      admin: {
-        description: "Open Graph image",
-      },
     },
   ],
   timestamps: true,

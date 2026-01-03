@@ -6,8 +6,7 @@ import { logger } from "./logger";
 
 export interface RevenueStats {
   total: number;
-  me: number;
-  partner: number;
+  byUser: Record<string, { amount: number; email: string; name?: string }>;
   currency: string;
   period: {
     start: Date;
@@ -16,19 +15,19 @@ export interface RevenueStats {
 }
 
 /**
- * Calculate revenue by owner for a given period
- * Used for tracking $400/month goal
+ * Calculate revenue by creator for a given period
+ * Groups revenue by the user who created the products
  */
-export async function getRevenueByOwner(
+export async function getRevenueByCreator(
   startDate: Date,
   endDate: Date,
-  _owner?: "ME" | "PARTNER",
+  userId?: string,
 ): Promise<RevenueStats> {
   const payload = await getPayload({ config });
 
   try {
     const orders = await payload.find({
-      collection: "orders" as const,
+      collection: "orders",
       where: {
         status: {
           equals: "completed",
@@ -37,38 +36,52 @@ export async function getRevenueByOwner(
           greater_than_equal: startDate.toISOString(),
           less_than_equal: endDate.toISOString(),
         },
-        ...(_owner ? { ownerAttribution: { equals: _owner } } : {}),
+        ...(userId ? { createdBy: { equals: userId } } : {}),
       },
+      depth: 1, // Get createdBy user details
       limit: 10000,
     });
 
     let total = 0;
-    let me = 0;
-    let partner = 0;
-    const currency = "usd"; // Default, could be dynamic
+    const byUser: Record<
+      string,
+      { amount: number; email: string; name?: string }
+    > = {};
+    const currency = "usd";
 
     for (const order of orders.docs) {
       const orderData = order as {
         totalAmount: number;
         currency: string;
-        ownerAttribution: "ME" | "PARTNER";
+        createdBy?: { id: string; email: string; name?: string } | string;
       };
 
       const amount = orderData.totalAmount / 100; // Convert from cents
-
       total += amount;
 
-      if (orderData.ownerAttribution === "ME") {
-        me += amount;
-      } else {
-        partner += amount;
+      // Get creator info
+      const creator = orderData.createdBy;
+      if (creator) {
+        const creatorId = typeof creator === "string" ? creator : creator.id;
+        const creatorEmail =
+          typeof creator === "string" ? "Unknown" : creator.email;
+        const creatorName =
+          typeof creator === "string" ? undefined : creator.name;
+
+        if (!byUser[creatorId]) {
+          byUser[creatorId] = {
+            amount: 0,
+            email: creatorEmail,
+            name: creatorName,
+          };
+        }
+        byUser[creatorId].amount += amount;
       }
     }
 
     return {
       total,
-      me,
-      partner,
+      byUser,
       currency,
       period: {
         start: startDate,
@@ -85,7 +98,7 @@ export async function getRevenueByOwner(
  * Get monthly revenue for current month
  */
 export async function getCurrentMonthRevenue(
-  owner?: "ME" | "PARTNER",
+  userId?: string,
 ): Promise<RevenueStats> {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -98,71 +111,40 @@ export async function getCurrentMonthRevenue(
     59,
   );
 
-  return getRevenueByOwner(startOfMonth, endOfMonth, owner);
+  return getRevenueByCreator(startOfMonth, endOfMonth, userId);
 }
 
 /**
- * Get revenue by product owner (who created the product)
- * This tracks which products are selling, not just who gets the revenue
+ * Get revenue summary for all users
  */
-export async function getRevenueByProductOwner(
+export async function getRevenueSummary(
   startDate: Date,
   endDate: Date,
-): Promise<{ ME: number; PARTNER: number }> {
-  const payload = await getPayload({ config });
+): Promise<{
+  total: number;
+  users: Array<{
+    id: string;
+    email: string;
+    name?: string;
+    amount: number;
+    percentage: number;
+  }>;
+}> {
+  const stats = await getRevenueByCreator(startDate, endDate);
 
-  try {
-    const orders = await payload.find({
-      collection: "orders" as any,
-      where: {
-        status: {
-          equals: "completed",
-        },
-        createdAt: {
-          greater_than_equal: startDate.toISOString(),
-          less_than_equal: endDate.toISOString(),
-        },
-      },
-      limit: 10000,
-    });
+  const users = Object.entries(stats.byUser).map(([id, data]) => ({
+    id,
+    email: data.email,
+    name: data.name,
+    amount: data.amount,
+    percentage: stats.total > 0 ? (data.amount / stats.total) * 100 : 0,
+  }));
 
-    const revenue: { ME: number; PARTNER: number } = { ME: 0, PARTNER: 0 };
+  // Sort by amount descending
+  users.sort((a, b) => b.amount - a.amount);
 
-    for (const order of orders.docs) {
-      const orderData = order as {
-        items: Array<{
-          productId?: string;
-          type: string;
-        }>;
-        totalAmount: number;
-      };
-
-      // Calculate per-item revenue (simple average for now)
-      const itemCount = orderData.items.length;
-      const amountPerItem = orderData.totalAmount / 100 / itemCount;
-
-      for (const item of orderData.items) {
-        if (item.type === "product" && item.productId) {
-          try {
-            const product = (await payload.findByID({
-              collection: "products" as any,
-              id: item.productId,
-            })) as unknown as { owner: "ME" | "PARTNER" };
-
-            revenue[product.owner] += amountPerItem;
-          } catch (error) {
-            logger.error(
-              { error, productId: item.productId },
-              "Failed to fetch product owner",
-            );
-          }
-        }
-      }
-    }
-
-    return revenue;
-  } catch (error) {
-    logger.error({ error }, "Failed to calculate revenue by product owner");
-    throw error;
-  }
+  return {
+    total: stats.total,
+    users,
+  };
 }

@@ -70,10 +70,14 @@ export interface Config {
     users: User;
     media: Media;
     categories: Category;
+    subcategories: Subcategory;
     products: Product;
     bundles: Bundle;
     orders: Order;
     posts: Post;
+    'hero-slides': HeroSlide;
+    'contact-submissions': ContactSubmission;
+    'newsletter-subscribers': NewsletterSubscriber;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -84,10 +88,14 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    subcategories: SubcategoriesSelect<false> | SubcategoriesSelect<true>;
     products: ProductsSelect<false> | ProductsSelect<true>;
     bundles: BundlesSelect<false> | BundlesSelect<true>;
     orders: OrdersSelect<false> | OrdersSelect<true>;
     posts: PostsSelect<false> | PostsSelect<true>;
+    'hero-slides': HeroSlidesSelect<false> | HeroSlidesSelect<true>;
+    'contact-submissions': ContactSubmissionsSelect<false> | ContactSubmissionsSelect<true>;
+    'newsletter-subscribers': NewsletterSubscribersSelect<false> | NewsletterSubscribersSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -178,34 +186,91 @@ export interface Media {
   focalY?: number | null;
 }
 /**
+ * Main product categories for the storefront
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "categories".
  */
 export interface Category {
   id: number;
+  /**
+   * Category name (e.g., Academic & Bio-Med)
+   */
   title: string;
   /**
-   * URL-friendly identifier
+   * URL-friendly identifier (auto-generated from title)
    */
   slug: string;
+  /**
+   * Brief description of the category
+   */
   description?: string | null;
   /**
-   * Parent category for nested hierarchy
+   * Category image for storefront display
    */
-  parent?: (number | null) | Category;
+  image?: (number | null) | Media;
+  /**
+   * Icon to display for this category
+   */
+  icon?: ('Microscope' | 'ChartLine' | 'Sparkles' | 'Palette' | 'Workflow' | 'Folder') | null;
+  /**
+   * Gradient color for category card background
+   */
+  gradient?:
+    | (
+        | 'from-blue-500 to-cyan-500'
+        | 'from-emerald-500 to-green-500'
+        | 'from-purple-500 to-pink-500'
+        | 'from-orange-500 to-red-500'
+        | 'from-indigo-500 to-violet-500'
+        | 'from-gray-500 to-gray-600'
+      )
+    | null;
   status: 'active' | 'archived';
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Product subcategories (products are assigned to these)
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subcategories".
+ */
+export interface Subcategory {
+  id: number;
   /**
-   * SEO title (overrides default)
+   * Subcategory name (e.g., Study Planners, Budget Templates)
    */
-  metaTitle?: string | null;
+  title: string;
   /**
-   * SEO meta description
+   * URL-friendly identifier (auto-generated from title)
    */
-  metaDescription?: string | null;
+  slug: string;
   /**
-   * Open Graph image
+   * Brief description of the subcategory
    */
-  ogImage?: (number | null) | Media;
+  description?: string | null;
+  /**
+   * Parent category this subcategory belongs to
+   */
+  category: number | Category;
+  status: 'active' | 'archived';
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -217,7 +282,7 @@ export interface Product {
   id: number;
   title: string;
   /**
-   * URL-friendly identifier
+   * URL-friendly identifier (auto-generated from title)
    */
   slug: string;
   description?: {
@@ -239,23 +304,30 @@ export interface Product {
    * Brief description for listings
    */
   shortDescription?: string | null;
-  category: number | Category;
   /**
-   * Product creator - used for revenue attribution
+   * Product subcategory (determines the parent category)
    */
-  owner: 'ME' | 'PARTNER';
+  subcategory: number | Subcategory;
+  /**
+   * Product creator - auto-set to current user
+   */
+  createdBy: number | User;
   /**
    * Polar.sh product ID - one per price point
    */
   polarProductId: string;
   /**
-   * R2 storage key/path for the product file
+   * Price in cents (e.g., 999 = $9.99). Must match Polar price.
    */
-  fileKey: string;
+  price: number;
   /**
-   * File size in bytes
+   * Original price in cents for sale display (optional)
    */
-  fileSize?: number | null;
+  compareAtPrice?: number | null;
+  /**
+   * Downloadable product file (PDF, ZIP, etc.)
+   */
+  file: number | Media;
   images?:
     | {
         image: number | Media;
@@ -270,18 +342,14 @@ export interface Product {
         id?: string | null;
       }[]
     | null;
-  /**
-   * SEO title (overrides default)
-   */
-  metaTitle?: string | null;
-  /**
-   * SEO meta description
-   */
-  metaDescription?: string | null;
-  /**
-   * Open Graph image
-   */
-  ogImage?: (number | null) | Media;
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -293,7 +361,7 @@ export interface Bundle {
   id: number;
   title: string;
   /**
-   * URL-friendly identifier
+   * URL-friendly identifier (auto-generated from title)
    */
   slug: string;
   description?: {
@@ -320,27 +388,37 @@ export interface Bundle {
    */
   polarProductId: string;
   /**
+   * Bundle price in cents (e.g., 2999 = $29.99). Must match Polar price.
+   */
+  price: number;
+  /**
+   * Original price in cents (sum of individual products) for savings display
+   */
+  compareAtPrice?: number | null;
+  /**
    * Products included in this bundle
    */
   products: (number | Product)[];
   heroImage?: (number | null) | Media;
+  /**
+   * Bundle creator - auto-set to current user
+   */
+  createdBy: number | User;
   status: 'active' | 'draft' | 'archived';
-  /**
-   * SEO title (overrides default)
-   */
-  metaTitle?: string | null;
-  /**
-   * SEO meta description
-   */
-  metaDescription?: string | null;
-  /**
-   * Open Graph image
-   */
-  ogImage?: (number | null) | Media;
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
   updatedAt: string;
   createdAt: string;
 }
 /**
+ * Orders are created automatically when customers complete checkout. Do not create manually.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "orders".
  */
@@ -375,13 +453,7 @@ export interface Order {
      * R2 file key for download
      */
     fileKey: string;
-    /**
-     * Maximum number of downloads allowed
-     */
     maxDownloads: number;
-    /**
-     * Number of downloads used
-     */
     downloadsUsed: number;
     id?: string | null;
   }[];
@@ -399,9 +471,9 @@ export interface Order {
    */
   fulfilled?: boolean | null;
   /**
-   * Revenue attribution - who gets credit for this sale
+   * Product creator who gets revenue attribution
    */
-  ownerAttribution: 'ME' | 'PARTNER';
+  createdBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -413,7 +485,7 @@ export interface Post {
   id: number;
   title: string;
   /**
-   * URL-friendly identifier
+   * URL-friendly identifier (auto-generated from title)
    */
   slug: string;
   content: {
@@ -437,22 +509,171 @@ export interface Post {
   excerpt?: string | null;
   featuredImage?: (number | null) | Media;
   /**
-   * Post author
+   * Post category
    */
-  author: 'ME' | 'PARTNER';
+  category?: (number | null) | Category;
+  /**
+   * Post author - auto-set to current user
+   */
+  createdBy: number | User;
+  status: 'published' | 'draft' | 'archived';
+  meta?: {
+    title?: string | null;
+    description?: string | null;
+    /**
+     * Maximum upload file size: 12MB. Recommended file size for images is <500KB.
+     */
+    image?: (number | null) | Media;
+  };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Manage homepage hero carousel slides
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hero-slides".
+ */
+export interface HeroSlide {
+  id: number;
+  /**
+   * Internal title for this slide
+   */
+  title: string;
+  /**
+   * Main headline text displayed on the slide
+   */
+  headline: string;
+  /**
+   * Supporting text below the headline
+   */
+  subheadline?: string | null;
+  /**
+   * Background image for the slide (recommended: 1920x800)
+   */
+  image: number | Media;
+  /**
+   * Optional mobile-optimized image (recommended: 800x1200)
+   */
+  mobileImage?: (number | null) | Media;
+  /**
+   * Primary call-to-action button
+   */
+  primaryCta: {
+    label: string;
+    href: string;
+  };
+  /**
+   * Optional secondary call-to-action button
+   */
+  secondaryCta?: {
+    label?: string | null;
+    href?: string | null;
+  };
+  /**
+   * Position of the text content on the slide
+   */
+  textPosition?: ('left' | 'center' | 'right') | null;
+  /**
+   * Text color scheme
+   */
+  textColor?: ('light' | 'dark') | null;
+  /**
+   * Dark overlay opacity for better text readability
+   */
+  overlayOpacity?: ('0' | '20' | '40' | '60') | null;
+  /**
+   * Display order (lower numbers appear first)
+   */
+  order: number;
   status: 'active' | 'draft' | 'archived';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Contact form submissions from website visitors
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-submissions".
+ */
+export interface ContactSubmission {
+  id: number;
+  name: string;
+  email: string;
   /**
-   * SEO title (overrides default)
+   * Optional phone number
    */
-  metaTitle?: string | null;
+  phone?: string | null;
+  subject: string;
+  message: string;
+  status: 'new' | 'in-progress' | 'resolved' | 'spam';
   /**
-   * SEO meta description
+   * Internal notes about this submission
    */
-  metaDescription?: string | null;
+  notes?: string | null;
   /**
-   * Open Graph image
+   * Team member handling this inquiry
    */
-  ogImage?: (number | null) | Media;
+  assignedTo?: (number | null) | User;
+  /**
+   * Page or form where submission originated
+   */
+  source?: string | null;
+  /**
+   * IP address of submitter (for spam prevention)
+   */
+  ipAddress?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Newsletter subscription list
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "newsletter-subscribers".
+ */
+export interface NewsletterSubscriber {
+  id: number;
+  email: string;
+  /**
+   * Optional first name for personalization
+   */
+  firstName?: string | null;
+  status: 'subscribed' | 'unsubscribed' | 'bounced' | 'complained';
+  /**
+   * Where the subscriber signed up
+   */
+  source?: ('footer' | 'popup' | 'checkout' | 'blog' | 'landing' | 'import' | 'other') | null;
+  /**
+   * Topics the subscriber is interested in
+   */
+  interests?:
+    | (
+        | 'academic-bio-med'
+        | 'wealth-finance'
+        | 'life-legacy'
+        | 'digital-aesthetic'
+        | 'work-flow'
+        | 'new-products'
+        | 'sales'
+      )[]
+    | null;
+  /**
+   * When the user first subscribed
+   */
+  subscribedAt?: string | null;
+  /**
+   * When the user unsubscribed (if applicable)
+   */
+  unsubscribedAt?: string | null;
+  /**
+   * IP address at time of subscription
+   */
+  ipAddress?: string | null;
+  /**
+   * Browser/device info at time of subscription
+   */
+  userAgent?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -493,6 +714,10 @@ export interface PayloadLockedDocument {
         value: number | Category;
       } | null)
     | ({
+        relationTo: 'subcategories';
+        value: number | Subcategory;
+      } | null)
+    | ({
         relationTo: 'products';
         value: number | Product;
       } | null)
@@ -507,6 +732,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'posts';
         value: number | Post;
+      } | null)
+    | ({
+        relationTo: 'hero-slides';
+        value: number | HeroSlide;
+      } | null)
+    | ({
+        relationTo: 'contact-submissions';
+        value: number | ContactSubmission;
+      } | null)
+    | ({
+        relationTo: 'newsletter-subscribers';
+        value: number | NewsletterSubscriber;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -600,11 +837,37 @@ export interface CategoriesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
   description?: T;
-  parent?: T;
+  image?: T;
+  icon?: T;
+  gradient?: T;
   status?: T;
-  metaTitle?: T;
-  metaDescription?: T;
-  ogImage?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subcategories_select".
+ */
+export interface SubcategoriesSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  description?: T;
+  category?: T;
+  status?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -617,11 +880,12 @@ export interface ProductsSelect<T extends boolean = true> {
   slug?: T;
   description?: T;
   shortDescription?: T;
-  category?: T;
-  owner?: T;
+  subcategory?: T;
+  createdBy?: T;
   polarProductId?: T;
-  fileKey?: T;
-  fileSize?: T;
+  price?: T;
+  compareAtPrice?: T;
+  file?: T;
   images?:
     | T
     | {
@@ -636,9 +900,13 @@ export interface ProductsSelect<T extends boolean = true> {
         tag?: T;
         id?: T;
       };
-  metaTitle?: T;
-  metaDescription?: T;
-  ogImage?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -652,12 +920,19 @@ export interface BundlesSelect<T extends boolean = true> {
   description?: T;
   shortDescription?: T;
   polarProductId?: T;
+  price?: T;
+  compareAtPrice?: T;
   products?: T;
   heroImage?: T;
+  createdBy?: T;
   status?: T;
-  metaTitle?: T;
-  metaDescription?: T;
-  ogImage?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -687,7 +962,7 @@ export interface OrdersSelect<T extends boolean = true> {
   totalAmount?: T;
   currency?: T;
   fulfilled?: T;
-  ownerAttribution?: T;
+  createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -701,11 +976,81 @@ export interface PostsSelect<T extends boolean = true> {
   content?: T;
   excerpt?: T;
   featuredImage?: T;
-  author?: T;
+  category?: T;
+  createdBy?: T;
   status?: T;
-  metaTitle?: T;
-  metaDescription?: T;
-  ogImage?: T;
+  meta?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "hero-slides_select".
+ */
+export interface HeroSlidesSelect<T extends boolean = true> {
+  title?: T;
+  headline?: T;
+  subheadline?: T;
+  image?: T;
+  mobileImage?: T;
+  primaryCta?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+      };
+  secondaryCta?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+      };
+  textPosition?: T;
+  textColor?: T;
+  overlayOpacity?: T;
+  order?: T;
+  status?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "contact-submissions_select".
+ */
+export interface ContactSubmissionsSelect<T extends boolean = true> {
+  name?: T;
+  email?: T;
+  phone?: T;
+  subject?: T;
+  message?: T;
+  status?: T;
+  notes?: T;
+  assignedTo?: T;
+  source?: T;
+  ipAddress?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "newsletter-subscribers_select".
+ */
+export interface NewsletterSubscribersSelect<T extends boolean = true> {
+  email?: T;
+  firstName?: T;
+  status?: T;
+  source?: T;
+  interests?: T;
+  subscribedAt?: T;
+  unsubscribedAt?: T;
+  ipAddress?: T;
+  userAgent?: T;
   updatedAt?: T;
   createdAt?: T;
 }

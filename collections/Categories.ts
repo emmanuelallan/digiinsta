@@ -7,16 +7,20 @@ const isAdmin: Access = ({ req: { user } }) => {
   return user?.role === "admin";
 };
 
+/**
+ * Categories Collection
+ * Main product categories (e.g., Academic & Bio-Med, Wealth & Finance)
+ * These are the top-level categories shown on the storefront
+ */
 export const Categories: CollectionConfig = {
   slug: "categories",
   admin: {
     useAsTitle: "title",
-    defaultColumns: ["title", "slug", "parent", "status"],
+    defaultColumns: ["title", "slug", "status"],
+    description: "Main product categories for the storefront",
   },
   access: {
-    // Public can read active categories
     read: () => true,
-    // Only admins can create/update/delete
     create: isAdmin,
     update: isAdmin,
     delete: isAdmin,
@@ -42,6 +46,9 @@ export const Categories: CollectionConfig = {
       name: "title",
       type: "text",
       required: true,
+      admin: {
+        description: "Category name (e.g., Academic & Bio-Med)",
+      },
     },
     {
       name: "slug",
@@ -49,19 +56,54 @@ export const Categories: CollectionConfig = {
       required: true,
       unique: true,
       admin: {
-        description: "URL-friendly identifier",
+        description: "URL-friendly identifier (auto-generated from title)",
       },
     },
     {
       name: "description",
       type: "textarea",
+      admin: {
+        description: "Brief description of the category",
+      },
     },
     {
-      name: "parent",
-      type: "relationship",
-      relationTo: "categories",
+      name: "image",
+      type: "upload",
+      relationTo: "media",
       admin: {
-        description: "Parent category for nested hierarchy",
+        description: "Category image for storefront display",
+      },
+    },
+    {
+      name: "icon",
+      type: "select",
+      options: [
+        { label: "Microscope (Academic)", value: "Microscope" },
+        { label: "Chart Line (Finance)", value: "ChartLine" },
+        { label: "Sparkles (Life)", value: "Sparkles" },
+        { label: "Palette (Aesthetic)", value: "Palette" },
+        { label: "Workflow (Work)", value: "Workflow" },
+        { label: "Folder (Default)", value: "Folder" },
+      ],
+      defaultValue: "Folder",
+      admin: {
+        description: "Icon to display for this category",
+      },
+    },
+    {
+      name: "gradient",
+      type: "select",
+      options: [
+        { label: "Blue to Cyan", value: "from-blue-500 to-cyan-500" },
+        { label: "Emerald to Green", value: "from-emerald-500 to-green-500" },
+        { label: "Purple to Pink", value: "from-purple-500 to-pink-500" },
+        { label: "Orange to Red", value: "from-orange-500 to-red-500" },
+        { label: "Indigo to Violet", value: "from-indigo-500 to-violet-500" },
+        { label: "Gray", value: "from-gray-500 to-gray-600" },
+      ],
+      defaultValue: "from-gray-500 to-gray-600",
+      admin: {
+        description: "Gradient color for category card background",
       },
     },
     {
@@ -73,29 +115,6 @@ export const Categories: CollectionConfig = {
       ],
       defaultValue: "active",
       required: true,
-    },
-    // SEO fields
-    {
-      name: "metaTitle",
-      type: "text",
-      admin: {
-        description: "SEO title (overrides default)",
-      },
-    },
-    {
-      name: "metaDescription",
-      type: "textarea",
-      admin: {
-        description: "SEO meta description",
-      },
-    },
-    {
-      name: "ogImage",
-      type: "upload",
-      relationTo: "media",
-      admin: {
-        description: "Open Graph image",
-      },
     },
   ],
   timestamps: true,
