@@ -33,6 +33,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: `${SITE_URL}/blog`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.8,
+    },
+    {
       url: `${SITE_URL}/new-arrivals`,
       lastModified: new Date(),
       changeFrequency: "daily",
@@ -130,5 +136,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticPages, ...productPages, ...categoryPages, ...subcategoryPages, ...bundlePages];
+  // Fetch all published blog posts
+  const posts = await payload.find({
+    collection: "posts",
+    where: { status: { equals: "published" } },
+    limit: 500,
+    select: { slug: true, updatedAt: true },
+  });
+
+  const postPages: MetadataRoute.Sitemap = posts.docs.map((post) => ({
+    url: `${SITE_URL}/blog/${post.slug}`,
+    lastModified: new Date(post.updatedAt),
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+
+  return [
+    ...staticPages,
+    ...productPages,
+    ...categoryPages,
+    ...subcategoryPages,
+    ...bundlePages,
+    ...postPages,
+  ];
 }

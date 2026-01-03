@@ -43,3 +43,14 @@ export type { HeroSlide } from "./hero";
 
 // Search utilities
 export { search } from "./search";
+
+// Blog utilities
+export {
+  getBlogPosts,
+  getBlogPostBySlug,
+  getRecentPosts,
+  getRelatedPosts,
+  getFeaturedPost,
+  getBlogCategories,
+} from "./blog";
+export type { BlogPost } from "./blog";
