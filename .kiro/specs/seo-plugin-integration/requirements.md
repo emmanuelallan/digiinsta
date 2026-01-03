@@ -53,9 +53,9 @@ This feature integrates the official `@payloadcms/plugin-seo` plugin into the Di
 #### Acceptance Criteria
 
 1. THE SEO_Plugin SHALL display a search engine preview below the meta fields
-2. WHEN generating the preview URL for products, THE SEO_Plugin SHALL use the format "https://digiinsta.com/products/{slug}"
-3. WHEN generating the preview URL for posts, THE SEO_Plugin SHALL use the format "https://digiinsta.com/blog/{slug}"
-4. WHEN generating the preview URL for bundles, THE SEO_Plugin SHALL use the format "https://digiinsta.com/bundles/{slug}"
+2. WHEN generating the preview URL for products, THE SEO_Plugin SHALL use the format "https://digiinsta.store/products/{slug}"
+3. WHEN generating the preview URL for posts, THE SEO_Plugin SHALL use the format "https://digiinsta.store/blog/{slug}"
+4. WHEN generating the preview URL for bundles, THE SEO_Plugin SHALL use the format "https://digiinsta.store/bundles/{slug}"
 
 ### Requirement 5: Admin Panel UI Enhancement
 

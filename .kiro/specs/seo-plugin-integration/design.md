@@ -71,7 +71,7 @@ const generateImage: GenerateImage = ({ doc }) => {
 };
 
 const generateURL: GenerateURL = ({ doc, collectionSlug }) => {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://digiinsta.com";
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://digiinsta.store";
   const slug = doc?.slug || "";
 
   const pathMap: Record<string, string> = {
@@ -143,7 +143,7 @@ The plugin adds a dedicated "SEO" tab to each collection's edit view:
 │  Search Preview                                          │
 │  ┌─────────────────────────────────────────────────┐    │
 │  │ DigiInsta — Premium UI Kit                       │    │
-│  │ https://digiinsta.com/products/premium-ui-kit    │    │
+│  │ https://digiinsta.store/products/premium-ui-kit    │    │
 │  │ A comprehensive UI kit with 200+ components...   │    │
 │  └─────────────────────────────────────────────────┘    │
 │                                                          │

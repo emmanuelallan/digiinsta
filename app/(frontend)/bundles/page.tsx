@@ -20,10 +20,21 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { SITE_URL, SITE_NAME } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Bundles | Save More",
-  description: "Save more with our curated bundles of premium digital products at DigiInsta.",
+  title: "Product Bundles | Save Up to 40%",
+  description:
+    "Save up to 40% with DigiInsta bundles. Get curated collections of digital planners, finance tools, and productivity templates at discounted prices.",
+  alternates: {
+    canonical: `${SITE_URL}/bundles`,
+  },
+  openGraph: {
+    title: `Product Bundles | Save Up to 40% | ${SITE_NAME}`,
+    description:
+      "Save up to 40% with DigiInsta bundles. Get curated collections of digital planners, finance tools, and productivity templates.",
+    url: `${SITE_URL}/bundles`,
+  },
 };
 
 export default async function BundlesPage() {

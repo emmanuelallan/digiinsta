@@ -13,7 +13,7 @@ export async function EditorsPick({ className }: EditorsPickProps) {
       title="Editor's Pick"
       subtitle="Handpicked favorites from our design team"
       products={products}
-      viewAllHref="/products?filter=featured"
+      viewAllHref="/products"
       className={className}
     />
   );

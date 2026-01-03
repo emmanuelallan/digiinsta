@@ -13,7 +13,7 @@ export async function NewArrivals({ className }: NewArrivalsProps) {
       title="New Arrivals"
       subtitle="Fresh additions to help you achieve more"
       products={products}
-      viewAllHref="/products?sort=newest"
+      viewAllHref="/new-arrivals"
       className={className}
     />
   );

@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { CheckmarkCircle01Icon, Download01Icon, Mail01Icon } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessContent() {
   const searchParams = useSearchParams();
   const checkoutId = searchParams.get("checkout_id");
   const { clearCart } = useCart();
@@ -85,5 +86,32 @@ export default function CheckoutSuccessPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function CheckoutSuccessLoading() {
+  return (
+    <div className="bg-background min-h-screen">
+      <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <Skeleton className="mx-auto mb-6 h-20 w-20 rounded-full" />
+          <Skeleton className="mx-auto mb-4 h-9 w-80" />
+          <Skeleton className="mx-auto mb-8 h-6 w-96" />
+          <Skeleton className="mx-auto mb-8 h-16 w-full rounded-lg" />
+          <div className="flex justify-center gap-3">
+            <Skeleton className="h-11 w-40" />
+            <Skeleton className="h-11 w-32" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={<CheckoutSuccessLoading />}>
+      <CheckoutSuccessContent />
+    </Suspense>
   );
 }

@@ -4,9 +4,6 @@ export {
   ProductTraySkeleton,
   BundleBannerSkeleton,
   BundleShowcaseSkeleton,
-  CategoryShowcaseSkeleton,
-  HeroSkeleton,
-  SearchResultsSkeleton,
 } from "./Skeletons";
 export {
   EmptyState,

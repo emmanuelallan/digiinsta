@@ -13,7 +13,7 @@ export async function BestSellers({ className }: BestSellersProps) {
       title="Best Sellers"
       subtitle="Top picks loved by our community"
       products={products}
-      viewAllHref="/products?sort=popular"
+      viewAllHref="/best-sellers"
       className={className}
     />
   );

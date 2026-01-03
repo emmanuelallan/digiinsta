@@ -19,10 +19,20 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { SITE_URL, SITE_NAME } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "All Products",
-  description: "Browse all premium digital products, templates, and tools at DigiInsta.",
+  title: "All Products | Digital Planners, Templates & Tools",
+  description:
+    "Browse all premium digital products at DigiInsta. Find planners, templates, finance trackers, and productivity tools for students, professionals, and couples.",
+  alternates: {
+    canonical: `${SITE_URL}/products`,
+  },
+  openGraph: {
+    title: `All Products | ${SITE_NAME}`,
+    description: "Browse all premium digital products, templates, and tools at DigiInsta.",
+    url: `${SITE_URL}/products`,
+  },
 };
 
 interface ProductsPageProps {
