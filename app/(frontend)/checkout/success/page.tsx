@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -8,16 +8,26 @@ import { CheckmarkCircle01Icon, Download01Icon, Mail01Icon } from "@hugeicons/co
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart";
 import { Skeleton } from "@/components/ui/skeleton";
+import { trackCheckoutSuccess } from "@/components/analytics";
 
 function CheckoutSuccessContent() {
   const searchParams = useSearchParams();
   const checkoutId = searchParams.get("checkout_id");
-  const { clearCart } = useCart();
+  const { clearCart, itemCount } = useCart();
+  const tracked = useRef(false);
 
-  // Clear cart on successful checkout
+  // Clear cart and track success on successful checkout
   useEffect(() => {
+    // Track checkout success (only once)
+    if (!tracked.current && checkoutId) {
+      tracked.current = true;
+      trackCheckoutSuccess({
+        order_id: checkoutId,
+        item_count: itemCount,
+      });
+    }
     clearCart();
-  }, [clearCart]);
+  }, [clearCart, checkoutId, itemCount]);
 
   return (
     <div className="bg-background min-h-screen">

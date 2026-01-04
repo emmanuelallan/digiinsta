@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Cart, CartItem, CartContextType } from "./types";
+import { trackAddToCart, trackRemoveFromCart } from "@/components/analytics";
 
 const CART_STORAGE_KEY = "digiinsta_cart";
 
@@ -91,6 +92,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         quantity: 1, // Digital products always have quantity 1
       };
 
+      // Track add to cart event
+      trackAddToCart({
+        id: item.type === "bundle" ? item.bundleId! : item.productId!,
+        title: item.title,
+        price: item.price,
+        type: item.type,
+      });
+
       return {
         ...prev,
         items: [...prev.items, newItem],
@@ -103,11 +112,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const removeItem = useCallback((id: string) => {
-    setCart((prev) => ({
-      ...prev,
-      items: prev.items.filter((item) => item.id !== id),
-      updatedAt: new Date().toISOString(),
-    }));
+    setCart((prev) => {
+      // Find the item being removed for tracking
+      const itemToRemove = prev.items.find((item) => item.id === id);
+      if (itemToRemove) {
+        trackRemoveFromCart({
+          id: itemToRemove.type === "bundle" ? itemToRemove.bundleId! : itemToRemove.productId!,
+          title: itemToRemove.title,
+          type: itemToRemove.type,
+        });
+      }
+
+      return {
+        ...prev,
+        items: prev.items.filter((item) => item.id !== id),
+        updatedAt: new Date().toISOString(),
+      };
+    });
   }, []);
 
   const clearCart = useCallback(() => {

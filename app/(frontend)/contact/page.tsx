@@ -23,6 +23,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { trackGoal, ANALYTICS_GOALS } from "@/components/analytics";
 
 type FormStatus = "idle" | "loading" | "success" | "error";
 
@@ -57,6 +58,11 @@ export default function ContactPage() {
 
       setFormStatus("success");
       (e.target as HTMLFormElement).reset();
+
+      // Track contact form submission
+      trackGoal(ANALYTICS_GOALS.CONTACT_FORM_SUBMIT, {
+        subject: data.subject,
+      });
     } catch (error) {
       setFormStatus("error");
       setErrorMessage(error instanceof Error ? error.message : "Something went wrong");
