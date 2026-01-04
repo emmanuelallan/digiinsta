@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { search } from "@/lib/storefront/search";
+import { rateLimiters, getClientIp, checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
+  // Rate limit: 30 requests per minute per IP
+  const ip = getClientIp(request);
+  const rateLimitResponse = await checkRateLimit(rateLimiters.search, ip);
+  if (rateLimitResponse) return rateLimitResponse;
+
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get("q");
 

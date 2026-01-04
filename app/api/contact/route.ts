@@ -1,27 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { rateLimiters, getClientIp, checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 5 requests per hour per IP
+  const ip = getClientIp(request);
+  const rateLimitResponse = await checkRateLimit(rateLimiters.contact, ip);
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const body = await request.json();
     const { name, email, phone, subject, message, source } = body;
 
     // Validate required fields
     if (!name || !email || !subject || !message) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: "Invalid email format" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
     }
 
     const payload = await getPayload({ config });
@@ -49,13 +49,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { success: true, message: "Message sent successfully" },
-      { status: 201 },
+      { status: 201 }
     );
   } catch (error) {
     console.error("Contact form error:", error);
-    return NextResponse.json(
-      { error: "Failed to send message" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Failed to send message" }, { status: 500 });
   }
 }

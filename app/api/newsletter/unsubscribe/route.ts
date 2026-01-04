@@ -7,8 +7,14 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 import { logger } from "@/lib/logger";
+import { rateLimiters, getClientIp, checkRateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 3 requests per hour per IP (uses newsletter limiter)
+  const ip = getClientIp(request);
+  const rateLimitResponse = await checkRateLimit(rateLimiters.newsletter, ip);
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const { email } = await request.json();
 

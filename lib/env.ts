@@ -10,12 +10,8 @@ const envSchema = z.object({
   DATABASE_URL: z.url("DATABASE_URL must be a valid URL"),
 
   // Payload CMS
-  PAYLOAD_SECRET: z
-    .string()
-    .min(32, "PAYLOAD_SECRET must be at least 32 characters"),
-  PAYLOAD_PUBLIC_SERVER_URL: z.url(
-    "PAYLOAD_PUBLIC_SERVER_URL must be a valid URL",
-  ),
+  PAYLOAD_SECRET: z.string().min(32, "PAYLOAD_SECRET must be at least 32 characters"),
+  PAYLOAD_PUBLIC_SERVER_URL: z.url("PAYLOAD_PUBLIC_SERVER_URL must be a valid URL"),
 
   // Cloudflare R2 Storage
   R2_ACCOUNT_ID: z.string().min(1, "R2_ACCOUNT_ID is required"),
@@ -25,17 +21,22 @@ const envSchema = z.object({
   R2_PUBLIC_URL: z.string().optional(),
 
   // Email (Resend)
-  RESEND_API_KEY: z
-    .string()
-    .startsWith("re_", "RESEND_API_KEY must start with 're_'"),
+  RESEND_API_KEY: z.string().startsWith("re_", "RESEND_API_KEY must start with 're_'"),
 
   // Polar.sh Payments
   POLAR_WEBHOOK_SECRET: z.string().min(1, "POLAR_WEBHOOK_SECRET is required"),
 
+  // QStash (for scheduled jobs)
+  QSTASH_TOKEN: z.string().optional(),
+  QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
+  QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
+
+  // Upstash Redis (for rate limiting)
+  UPSTASH_REDIS_REST_URL: z.url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
   // Optional
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 });
 
 export type Env = z.infer<typeof envSchema>;

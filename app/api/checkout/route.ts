@@ -8,6 +8,7 @@ import { cookies } from "next/headers";
 import { Polar } from "@polar-sh/sdk";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { rateLimiters, getClientIp, checkRateLimit } from "@/lib/rate-limit";
 
 // Initialize Polar client
 function getPolarClient() {
@@ -38,6 +39,11 @@ interface CheckoutRequest {
 }
 
 export async function POST(request: NextRequest) {
+  // Rate limit: 10 requests per minute per IP
+  const ip = getClientIp(request);
+  const rateLimitResponse = await checkRateLimit(rateLimiters.checkout, ip);
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const body: CheckoutRequest = await request.json();
     const { items, customerEmail, metadata } = body;
