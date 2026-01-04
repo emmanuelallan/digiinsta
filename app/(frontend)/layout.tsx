@@ -52,24 +52,12 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
   const websiteSchema = getWebsiteSchema();
 
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="scroll-smooth">
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <link rel="manifest" href="/manifest.json" />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationSchema),
-          }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(websiteSchema),
-          }}
-        />
       </head>
       <body className={`${josefinSans.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider
@@ -89,6 +77,19 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
         </ThemeProvider>
         <Toaster />
         <Analytics />
+        {/* JSON-LD structured data - placed in body to avoid hydration mismatch */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(organizationSchema),
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(websiteSchema),
+          }}
+        />
       </body>
     </html>
   );

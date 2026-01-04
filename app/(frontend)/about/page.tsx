@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   CheckmarkCircle01Icon,
@@ -18,6 +17,7 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { SITE_URL, SITE_NAME } from "@/lib/seo";
+import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "About Us | DigiInsta",
@@ -130,7 +130,7 @@ export default function AboutPage() {
             </div>
             <div className="bg-muted relative aspect-square overflow-hidden rounded-2xl lg:aspect-auto">
               <Image
-                src="/images/about-hero.jpg"
+                src="/images/about-hero.png"
                 alt="DigiInsta workspace"
                 fill
                 className="object-cover"

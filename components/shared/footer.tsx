@@ -16,32 +16,23 @@ import Image from "next/image";
 // Footer link data - easy to maintain and update
 const footerLinks = {
   aboutUs: [
-    { href: "/about/our-story", label: "Our Story" },
-    { href: "/about/affiliates", label: "Affiliates" },
-    { href: "/about/press", label: "Press Page" },
-    { href: "/about/careers", label: "Careers" },
+    { href: "/about", label: "About Us" },
     { href: "/blog", label: "Blog" },
-    { href: "/about/corporate-gifting", label: "Corporate Gifting" },
   ],
   shop: [
-    { href: "/categories/planners", label: "Planners" },
-    { href: "/categories/journals", label: "Journals" },
-    { href: "/categories/notebooks", label: "Notebooks" },
-    { href: "/categories/templates", label: "Templates" },
-    { href: "/wholesale", label: "Wholesale" },
-    { href: "/gift-cards", label: "Gift Cards" },
+    { href: "/products", label: "All Products" },
+    { href: "/bundles", label: "Bundles" },
+    { href: "/new-arrivals", label: "New Arrivals" },
+    { href: "/best-sellers", label: "Best Sellers" },
+    { href: "/sale", label: "Sale" },
   ],
   help: [
-    { href: "/help/shipping", label: "Shipping Info" },
-    { href: "/help/holiday-shopping", label: "Holiday Shopping" },
-    { href: "/help/returns", label: "Returns" },
     { href: "/help/faq", label: "FAQs" },
     { href: "/contact", label: "Contact Us" },
   ],
   legal: [
     { href: "/privacy", label: "Privacy Policy" },
-    { href: "/terms", label: "Terms" },
-    { href: "/cookies", label: "Cookies" },
+    { href: "/terms", label: "Terms of Service" },
   ],
 };
 
@@ -112,14 +103,14 @@ export function Footer() {
               productivity. Discover our curated collection of planners, journals, and
               organizational tools.
             </p>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-4">
               {socialLinks.map((social) => (
                 <Link
                   key={social.label}
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-muted-foreground hover:border-border hover:bg-muted/50 rounded-full border border-transparent p-4 transition-all duration-300"
+                  className="text-muted-foreground hover:border-border hover:bg-muted/50 rounded-full border border-transparent p-2 transition-all duration-300 sm:p-4"
                   aria-label={social.label}
                 >
                   {social.icon}
@@ -179,20 +170,20 @@ export function Footer() {
         </div>
 
         {/* Newsletter Section */}
-        <div className="border-border/40 flex items-center justify-center border-t pt-12 pb-8">
+        <div className="border-border/40 flex items-center justify-center border-t pt-6 pb-4 sm:pt-12 sm:pb-8">
           {/* <Newsletter /> */}
-          <div className="text-muted-foreground flex items-center space-x-2 rounded-lg border-3 border-green-800/30 p-6 text-sm font-medium">
-            <span className="hidden text-green-400 sm:inline">
+          <div className="text-muted-foreground flex items-center space-x-2 rounded-lg border-3 border-green-800/30 p-3 text-sm font-medium sm:p-6">
+            <span className="inline text-green-400">
               <HugeiconsIcon icon={CheckmarkBadge01Icon} strokeWidth={1.5} />
             </span>
-            <span className="hidden sm:inline">100% Human-Designed & Verified.</span>
+            <span className="inline">100% Human-Designed & Verified.</span>
           </div>
         </div>
 
         {/* Bottom Section */}
         <div className="border-border/40 flex flex-col items-center justify-between space-y-4 border-t pt-8 md:flex-row md:space-y-0">
           <div className="text-muted-foreground flex items-center space-x-2 text-sm">
-            <span>© 2024 DigiInsta. All rights reserved.</span>
+            <span>© {new Date().getFullYear()} DigiInsta. All rights reserved.</span>
           </div>
           <div className="flex items-center space-x-6 text-sm">
             {footerLinks.legal.map((link) => (
