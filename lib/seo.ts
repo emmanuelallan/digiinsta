@@ -10,7 +10,7 @@ import type { Metadata } from "next";
  * Site-wide SEO constants
  */
 export const SITE_NAME = "DigiInsta";
-export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://digiinsta.store";
+export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.digiinsta.store";
 export const SITE_DESCRIPTION =
   "Elevate your life with DigiInsta. Shop expert-led digital planners, finance trackers, and SME tools engineered for students, couples, and professionals.";
 
