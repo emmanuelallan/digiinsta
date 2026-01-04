@@ -17,21 +17,16 @@ export function Analytics() {
   const isPlausible = ANALYTICS_ID.includes("plausible") || ANALYTICS_ID.includes("js");
 
   if (isPlausible) {
-    return (
-      <Script
-        defer
-        data-domain={ANALYTICS_ID}
-        src="https://plausible.io/js/script.js"
-      />
-    );
+    return <Script defer data-domain={ANALYTICS_ID} src="https://plausible.io/js/script.js" />;
   }
 
   // Datafast
   return (
     <Script
+      data-website-id={ANALYTICS_ID}
+      data-domain="digiinsta.store"
+      src="https://datafa.st/js/script.js"
       strategy="afterInteractive"
-      src={`https://datafast.app/script.js`}
-      data-token={ANALYTICS_ID}
     />
   );
 }
@@ -79,8 +74,14 @@ export function trackEvent(eventName: string, props?: Record<string, string | nu
 // TypeScript declarations
 declare global {
   interface Window {
-    plausible?: (eventName: string, options?: { props?: Record<string, string | number | boolean> }) => void;
-    datafast?: (action: string, eventName: string, props?: Record<string, string | number | boolean>) => void;
+    plausible?: (
+      eventName: string,
+      options?: { props?: Record<string, string | number | boolean> }
+    ) => void;
+    datafast?: (
+      action: string,
+      eventName: string,
+      props?: Record<string, string | number | boolean>
+    ) => void;
   }
 }
-
