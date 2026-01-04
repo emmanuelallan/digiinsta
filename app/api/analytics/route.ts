@@ -3,7 +3,7 @@
  * Provides dashboard data for client-side period switching
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getDashboardData } from "@/lib/analytics";
 import type { TimePeriod } from "@/lib/analytics/types";
 

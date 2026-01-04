@@ -89,8 +89,8 @@ export async function POST(request: NextRequest) {
       ...(datafastSessionId && { datafast_session_id: datafastSessionId }),
     };
 
-    // Get success URL
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    // Get success URL - use www subdomain to avoid redirects
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://www.digiinsta.store";
 
     // Create Polar checkout session
     const checkout = await polar.checkouts.create({

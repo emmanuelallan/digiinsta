@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { search } from "@/lib/storefront/search";
 import { rateLimiters, getClientIp, checkRateLimit } from "@/lib/rate-limit";
 

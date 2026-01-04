@@ -69,7 +69,7 @@ export default buildConfig({
     push: true,
   }),
   email: resendAdapter({
-    defaultFromAddress: "noreply@digiinsta.store",
+    defaultFromAddress: "noreply@notifications.digiinsta.store",
     defaultFromName: "DigiInsta",
     apiKey: process.env.RESEND_API_KEY || "",
   }),

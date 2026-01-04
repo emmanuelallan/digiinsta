@@ -318,7 +318,7 @@ async function sendFulfillmentEmails(
   totalAmount: number,
   currency: string
 ) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.notifications.digiinsta.store";
   const formattedTotal = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency.toUpperCase(),
@@ -335,7 +335,7 @@ async function sendFulfillmentEmails(
     to: email,
     subject: receiptTemplate.subject,
     html: receiptTemplate.html,
-    from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "digiinsta.store"}>`,
+    from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "notifications.digiinsta.store"}>`,
   });
 
   logger.info({ orderId, email }, "Purchase receipt email sent");
@@ -343,7 +343,7 @@ async function sendFulfillmentEmails(
   // Send download email with links for each item
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
-    if (!item || !item.fileKey) continue;
+    if (!item?.fileKey) continue;
 
     // Generate download URL (points to our secure download endpoint)
     const downloadUrl = `${appUrl}/api/download/${orderId}/${i}?email=${encodeURIComponent(email)}`;
@@ -354,7 +354,7 @@ async function sendFulfillmentEmails(
       to: email,
       subject: downloadTemplate.subject,
       html: downloadTemplate.html,
-      from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "digiinsta.store"}>`,
+      from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "notifications.digiinsta.store"}>`,
     });
 
     logger.info({ orderId, email, itemTitle: item.title }, "Download email sent");
@@ -402,7 +402,7 @@ async function handleOrderRefunded(data: Record<string, unknown>) {
         <p>The funds should appear in your account within 5-10 business days.</p>
         <p>If you have any questions, please contact our support team.</p>
       `,
-      from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "digiinsta.store"}>`,
+      from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "notifications.digiinsta.store"}>`,
     });
   }
 }
@@ -424,7 +424,7 @@ async function handleCheckoutFailed(data: Record<string, unknown>) {
     return;
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://digiinsta.store";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.notifications.digiinsta.store";
   const retryUrl = checkoutUrl || `${appUrl}/cart`;
 
   const failedTemplate = emailTemplates.failedPayment(checkoutId, retryUrl);
@@ -433,7 +433,7 @@ async function handleCheckoutFailed(data: Record<string, unknown>) {
     to: customerEmail,
     subject: failedTemplate.subject,
     html: failedTemplate.html,
-    from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "digiinsta.store"}>`,
+    from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "notifications.digiinsta.store"}>`,
   });
 
   logger.info({ checkoutId, customerEmail }, "Failed payment email sent");
@@ -455,7 +455,7 @@ async function handleOrderFailed(data: Record<string, unknown>) {
     return;
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://digiinsta.store";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.notifications.digiinsta.store";
   const retryUrl = `${appUrl}/cart`;
 
   const failedTemplate = emailTemplates.failedPayment(orderId, retryUrl);
@@ -464,7 +464,7 @@ async function handleOrderFailed(data: Record<string, unknown>) {
     to: customerEmail,
     subject: failedTemplate.subject,
     html: failedTemplate.html,
-    from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "digiinsta.store"}>`,
+    from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "notifications.digiinsta.store"}>`,
   });
 
   logger.info({ orderId, customerEmail }, "Failed order email sent");

@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+import { type Metadata } from "next";
 import { UnsubscribeForm } from "./unsubscribe-form";
 
 export const metadata: Metadata = {

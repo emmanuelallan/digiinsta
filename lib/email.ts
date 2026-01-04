@@ -17,7 +17,7 @@ export interface EmailOptions {
  */
 export async function sendEmail(options: EmailOptions): Promise<void> {
   try {
-    const defaultFrom = `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "digiinsta.store"}>`;
+    const defaultFrom = `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "notifications.digiinsta.store"}>`;
     await resend.emails.send({
       from: options.from ?? defaultFrom,
       to: Array.isArray(options.to) ? options.to : [options.to],
@@ -35,7 +35,7 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
  * Base email layout wrapper
  */
 function emailLayout(content: string, previewText?: string): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://digiinsta.store";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.digiinsta.store";
   const year = new Date().getFullYear();
 
   return `
@@ -160,7 +160,7 @@ export const emailTemplates = {
       </p>
       
       <div style="text-align: center;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://digiinsta.store"}/help/faq" class="button" style="display: inline-block; padding: 14px 32px; background-color: #18181b; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.digiinsta.store"}/help/faq" class="button" style="display: inline-block; padding: 14px 32px; background-color: #18181b; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Need Help?
         </a>
       </div>
@@ -197,7 +197,7 @@ export const emailTemplates = {
       </div>
       
       <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">
-        Having trouble? <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://digiinsta.store"}/contact" style="color: #18181b; text-decoration: underline;">Contact support</a>
+        Having trouble? <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.digiinsta.store"}/contact" style="color: #18181b; text-decoration: underline;">Contact support</a>
       </p>
       `,
       `Your download for ${productName} is ready. Click to download.`
@@ -227,7 +227,7 @@ export const emailTemplates = {
       </div>
       
       <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">
-        If you continue to experience issues, please <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://digiinsta.store"}/contact" style="color: #18181b; text-decoration: underline;">contact our support team</a>.
+        If you continue to experience issues, please <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.digiinsta.store"}/contact" style="color: #18181b; text-decoration: underline;">contact our support team</a>.
       </p>
       `,
       `Your payment for order #${orderId} was unsuccessful. Please try again.`
@@ -290,7 +290,7 @@ export const emailTemplates = {
       </div>
       
       <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://digiinsta.store"}/products" style="color: #18181b; text-decoration: underline;">Browse all products</a>
+        <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.digiinsta.store"}/products" style="color: #18181b; text-decoration: underline;">Browse all products</a>
       </p>
       `,
       `Based on your purchase, we think you'll love ${productName}`
@@ -346,7 +346,7 @@ export const emailTemplates = {
       </div>
       
       <div style="text-align: center;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://digiinsta.store"}/contact" class="button" style="display: inline-block; padding: 14px 32px; background-color: #18181b; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.digiinsta.store"}/contact" class="button" style="display: inline-block; padding: 14px 32px; background-color: #18181b; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Contact Support
         </a>
       </div>
@@ -369,7 +369,7 @@ export const emailTemplates = {
       </p>
       
       <div style="text-align: center; margin-bottom: 24px;">
-        <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://digiinsta.store"}/products" class="button" style="display: inline-block; padding: 14px 32px; background-color: #18181b; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        <a href="${process.env.NEXT_PUBLIC_APP_URL ?? "https://www.digiinsta.store"}/products" class="button" style="display: inline-block; padding: 14px 32px; background-color: #18181b; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Browse Products
         </a>
       </div>

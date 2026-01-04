@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { getPayload } from "payload";
 import config from "@payload-config";
 
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       const subscriber = existing.docs[0];
 
       // If already subscribed, return success (don't reveal subscription status)
-      if (subscriber && subscriber.status === "subscribed") {
+      if (subscriber?.status === "subscribed") {
         return NextResponse.json(
           { success: true, message: "Thank you for subscribing!" },
           { status: 200 }
