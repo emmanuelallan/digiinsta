@@ -4,6 +4,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { Polar } from "@polar-sh/sdk";
 
 // Initialize Polar client
@@ -54,6 +55,11 @@ export async function POST(request: NextRequest) {
     // Get Polar client
     const polar = getPolarClient();
 
+    // Get DataFast tracking cookies for revenue attribution
+    const cookieStore = await cookies();
+    const datafastVisitorId = cookieStore.get("datafast_visitor_id")?.value;
+    const datafastSessionId = cookieStore.get("datafast_session_id")?.value;
+
     // Extract Polar product IDs
     const productIds = items.map((item) => item.polarProductId);
 
@@ -68,6 +74,9 @@ export async function POST(request: NextRequest) {
           polarProductId: item.polarProductId,
         }))
       ),
+      // DataFast tracking for revenue attribution
+      ...(datafastVisitorId && { datafast_visitor_id: datafastVisitorId }),
+      ...(datafastSessionId && { datafast_session_id: datafastSessionId }),
     };
 
     // Get success URL

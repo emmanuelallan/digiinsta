@@ -17,8 +17,9 @@ export interface EmailOptions {
  */
 export async function sendEmail(options: EmailOptions): Promise<void> {
   try {
+    const defaultFrom = `DigiInsta <noreply@${process.env.RESEND_DOMAIN || "digiinsta.store"}>`;
     await resend.emails.send({
-      from: options.from || "Digital Products <noreply@yourdomain.com>",
+      from: options.from || defaultFrom,
       to: Array.isArray(options.to) ? options.to : [options.to],
       subject: options.subject,
       html: options.html,
@@ -48,11 +49,7 @@ export const emailTemplates = {
     `,
   }),
 
-  downloadEmail: (
-    productName: string,
-    downloadUrl: string,
-    expiresIn: string,
-  ) => ({
+  downloadEmail: (productName: string, downloadUrl: string, expiresIn: string) => ({
     subject: `Download: ${productName}`,
     html: `
       <h1>Your download is ready</h1>
