@@ -106,12 +106,12 @@ export async function POST(request: NextRequest) {
       const totalAmount = items.reduce((sum, item) => sum + (item.price || 0), 0);
 
       await payload.create({
-        collection: "checkouts",
+        collection: "checkouts" as const,
         data: {
           polarCheckoutId: checkout.id,
-          email: customerEmail || null,
+          email: customerEmail || undefined,
           items: items.map((item) => ({
-            type: item.type,
+            type: item.type as "product" | "bundle",
             productId: item.productId,
             title: item.title || `Product ${item.productId}`,
             price: item.price || 0,
