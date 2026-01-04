@@ -65,6 +65,10 @@ export async function POST(request: NextRequest) {
         await handleCheckoutUpdated(event.data);
         break;
 
+      case "checkout.failed":
+        await handleCheckoutFailed(event.data);
+        break;
+
       case "order.created":
         await handleOrderCreated(event.data);
         break;
@@ -75,6 +79,10 @@ export async function POST(request: NextRequest) {
 
       case "order.refunded":
         await handleOrderRefunded(event.data);
+        break;
+
+      case "order.failed":
+        await handleOrderFailed(event.data);
         break;
 
       default:
@@ -127,6 +135,27 @@ async function handleOrderPaid(data: Record<string, unknown>) {
   logger.info({ polarOrderId, customerEmail, totalAmount }, "Order paid - processing fulfillment");
 
   const payload = await getPayload({ config });
+
+  // Mark checkout as completed (for cart abandonment tracking)
+  if (metadata?.checkoutId) {
+    try {
+      const checkouts = await payload.find({
+        collection: "checkouts",
+        where: { polarCheckoutId: { equals: metadata.checkoutId } },
+        limit: 1,
+      });
+      const checkout = checkouts.docs[0];
+      if (checkout) {
+        await payload.update({
+          collection: "checkouts",
+          id: checkout.id,
+          data: { completed: true },
+        });
+      }
+    } catch (e) {
+      logger.warn({ error: e }, "Failed to mark checkout as completed");
+    }
+  }
 
   // Check if order already exists (idempotency)
   const existingOrder = await payload.find({
@@ -376,4 +405,67 @@ async function handleOrderRefunded(data: Record<string, unknown>) {
       from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "digiinsta.store"}>`,
     });
   }
+}
+
+/**
+ * Handle checkout.failed event
+ * Payment failed during checkout - send retry email
+ */
+async function handleCheckoutFailed(data: Record<string, unknown>) {
+  const checkoutId = data.id as string;
+  const customer = data.customer as Record<string, unknown> | undefined;
+  const customerEmail = customer?.email as string | undefined;
+  const checkoutUrl = data.url as string | undefined;
+
+  logger.info({ checkoutId, customerEmail }, "Checkout failed");
+
+  if (!customerEmail) {
+    logger.warn({ checkoutId }, "No customer email for failed checkout");
+    return;
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://digiinsta.store";
+  const retryUrl = checkoutUrl || `${appUrl}/cart`;
+
+  const failedTemplate = emailTemplates.failedPayment(checkoutId, retryUrl);
+
+  await sendEmail({
+    to: customerEmail,
+    subject: failedTemplate.subject,
+    html: failedTemplate.html,
+    from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "digiinsta.store"}>`,
+  });
+
+  logger.info({ checkoutId, customerEmail }, "Failed payment email sent");
+}
+
+/**
+ * Handle order.failed event
+ * Order payment failed - send retry email
+ */
+async function handleOrderFailed(data: Record<string, unknown>) {
+  const orderId = data.id as string;
+  const customer = data.customer as Record<string, unknown> | undefined;
+  const customerEmail = customer?.email as string | undefined;
+
+  logger.info({ orderId, customerEmail }, "Order failed");
+
+  if (!customerEmail) {
+    logger.warn({ orderId }, "No customer email for failed order");
+    return;
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://digiinsta.store";
+  const retryUrl = `${appUrl}/cart`;
+
+  const failedTemplate = emailTemplates.failedPayment(orderId, retryUrl);
+
+  await sendEmail({
+    to: customerEmail,
+    subject: failedTemplate.subject,
+    html: failedTemplate.html,
+    from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "digiinsta.store"}>`,
+  });
+
+  logger.info({ orderId, customerEmail }, "Failed order email sent");
 }

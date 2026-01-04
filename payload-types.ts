@@ -78,6 +78,8 @@ export interface Config {
     'hero-slides': HeroSlide;
     'contact-submissions': ContactSubmission;
     'newsletter-subscribers': NewsletterSubscriber;
+    'email-campaigns': EmailCampaign;
+    checkouts: Checkout;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -96,6 +98,8 @@ export interface Config {
     'hero-slides': HeroSlidesSelect<false> | HeroSlidesSelect<true>;
     'contact-submissions': ContactSubmissionsSelect<false> | ContactSubmissionsSelect<true>;
     'newsletter-subscribers': NewsletterSubscribersSelect<false> | NewsletterSubscribersSelect<true>;
+    'email-campaigns': EmailCampaignsSelect<false> | EmailCampaignsSelect<true>;
+    checkouts: CheckoutsSelect<false> | CheckoutsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -471,6 +475,10 @@ export interface Order {
    */
   fulfilled?: boolean | null;
   /**
+   * Whether upsell email has been sent
+   */
+  upsellSent?: boolean | null;
+  /**
    * Product creator who gets revenue attribution
    */
   createdBy?: (number | null) | User;
@@ -678,6 +686,149 @@ export interface NewsletterSubscriber {
   createdAt: string;
 }
 /**
+ * Email marketing campaigns
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "email-campaigns".
+ */
+export interface EmailCampaign {
+  id: number;
+  /**
+   * Internal name for this campaign
+   */
+  name: string;
+  type: 'new-product' | 'upsell' | 'newsletter' | 'promotion' | 'cart-abandonment' | 're-engagement';
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'failed';
+  /**
+   * Email subject line
+   */
+  subject: string;
+  /**
+   * Preview text shown in email clients (optional)
+   */
+  previewText?: string | null;
+  /**
+   * Email body content
+   */
+  content: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  /**
+   * Call-to-action button text (e.g., 'Shop Now')
+   */
+  ctaText?: string | null;
+  /**
+   * Call-to-action button URL
+   */
+  ctaUrl?: string | null;
+  audience: 'all-subscribers' | 'recent-customers' | 'all-customers' | 'by-interest' | 'custom';
+  /**
+   * Target subscribers with these interests
+   */
+  interests?:
+    | (
+        | 'academic-bio-med'
+        | 'wealth-finance'
+        | 'life-legacy'
+        | 'digital-aesthetic'
+        | 'work-flow'
+        | 'new-products'
+        | 'sales'
+      )[]
+    | null;
+  /**
+   * Enter email addresses, one per line
+   */
+  customEmails?: string | null;
+  /**
+   * Exclude customers who already purchased the promoted product
+   */
+  excludePurchasers?: boolean | null;
+  /**
+   * Link to a specific product (for new product announcements)
+   */
+  linkedProduct?: (number | null) | Product;
+  /**
+   * Link to a specific bundle
+   */
+  linkedBundle?: (number | null) | Bundle;
+  /**
+   * Number of recipients
+   */
+  recipientCount?: number | null;
+  /**
+   * When the campaign was sent
+   */
+  sentAt?: string | null;
+  /**
+   * Schedule send time (optional)
+   */
+  scheduledFor?: string | null;
+  errorMessage?: string | null;
+  createdBy?: (number | null) | User;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Checkout sessions for cart abandonment tracking
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "checkouts".
+ */
+export interface Checkout {
+  id: number;
+  /**
+   * Polar.sh checkout ID
+   */
+  polarCheckoutId: string;
+  /**
+   * Customer email (if provided)
+   */
+  email?: string | null;
+  items?:
+    | {
+        type: 'product' | 'bundle';
+        productId?: number | null;
+        title: string;
+        /**
+         * Price in cents
+         */
+        price?: number | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Total amount in cents
+   */
+  totalAmount?: number | null;
+  /**
+   * Whether checkout was completed
+   */
+  completed?: boolean | null;
+  /**
+   * Whether abandonment email was sent
+   */
+  abandonmentEmailSent?: boolean | null;
+  /**
+   * Polar checkout URL for retry
+   */
+  checkoutUrl?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -744,6 +895,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'newsletter-subscribers';
         value: number | NewsletterSubscriber;
+      } | null)
+    | ({
+        relationTo: 'email-campaigns';
+        value: number | EmailCampaign;
+      } | null)
+    | ({
+        relationTo: 'checkouts';
+        value: number | Checkout;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -962,6 +1121,7 @@ export interface OrdersSelect<T extends boolean = true> {
   totalAmount?: T;
   currency?: T;
   fulfilled?: T;
+  upsellSent?: T;
   createdBy?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -1051,6 +1211,56 @@ export interface NewsletterSubscribersSelect<T extends boolean = true> {
   unsubscribedAt?: T;
   ipAddress?: T;
   userAgent?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "email-campaigns_select".
+ */
+export interface EmailCampaignsSelect<T extends boolean = true> {
+  name?: T;
+  type?: T;
+  status?: T;
+  subject?: T;
+  previewText?: T;
+  content?: T;
+  ctaText?: T;
+  ctaUrl?: T;
+  audience?: T;
+  interests?: T;
+  customEmails?: T;
+  excludePurchasers?: T;
+  linkedProduct?: T;
+  linkedBundle?: T;
+  recipientCount?: T;
+  sentAt?: T;
+  scheduledFor?: T;
+  errorMessage?: T;
+  createdBy?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "checkouts_select".
+ */
+export interface CheckoutsSelect<T extends boolean = true> {
+  polarCheckoutId?: T;
+  email?: T;
+  items?:
+    | T
+    | {
+        type?: T;
+        productId?: T;
+        title?: T;
+        price?: T;
+        id?: T;
+      };
+  totalAmount?: T;
+  completed?: T;
+  abandonmentEmailSent?: T;
+  checkoutUrl?: T;
   updatedAt?: T;
   createdAt?: T;
 }

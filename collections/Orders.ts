@@ -27,14 +27,7 @@ export const Orders: CollectionConfig = {
   slug: "orders",
   admin: {
     useAsTitle: "polarOrderId",
-    defaultColumns: [
-      "polarOrderId",
-      "email",
-      "status",
-      "totalAmount",
-      "createdBy",
-      "createdAt",
-    ],
+    defaultColumns: ["polarOrderId", "email", "status", "totalAmount", "createdBy", "createdAt"],
     // Hide create button - orders are created automatically via webhooks
     hidden: false,
     description:
@@ -191,6 +184,14 @@ export const Orders: CollectionConfig = {
       defaultValue: false,
       admin: {
         description: "Whether fulfillment emails have been sent",
+      },
+    },
+    {
+      name: "upsellSent",
+      type: "checkbox",
+      defaultValue: false,
+      admin: {
+        description: "Whether upsell email has been sent",
       },
     },
     {

@@ -1,4 +1,5 @@
 import { postgresAdapter } from "@payloadcms/db-postgres";
+import { resendAdapter } from "@payloadcms/email-resend";
 import { lexicalEditor } from "@payloadcms/richtext-lexical";
 import { s3Storage } from "@payloadcms/storage-s3";
 import { seoPlugin } from "@payloadcms/plugin-seo";
@@ -18,12 +19,9 @@ import { Posts } from "./collections/Posts";
 import { HeroSlides } from "./collections/HeroSlides";
 import { ContactSubmissions } from "./collections/ContactSubmissions";
 import { NewsletterSubscribers } from "./collections/NewsletterSubscribers";
-import {
-  generateTitle,
-  generateDescription,
-  generateImage,
-  generateURL,
-} from "./lib/seo";
+import { EmailCampaigns } from "./collections/EmailCampaigns";
+import { Checkouts } from "./collections/Checkouts";
+import { generateTitle, generateDescription, generateImage, generateURL } from "./lib/seo";
 
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
@@ -41,9 +39,7 @@ export default buildConfig({
           path: "/dashboard",
         },
       },
-      afterNavLinks: [
-        "/components/admin/Dashboard/DashboardNavLink#DashboardNavLink",
-      ],
+      afterNavLinks: ["/components/admin/Dashboard/DashboardNavLink#DashboardNavLink"],
     },
   },
   collections: [
@@ -58,6 +54,8 @@ export default buildConfig({
     HeroSlides,
     ContactSubmissions,
     NewsletterSubscribers,
+    EmailCampaigns,
+    Checkouts,
   ],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || "",
@@ -69,6 +67,11 @@ export default buildConfig({
       connectionString: process.env.DATABASE_URL || "",
     },
     push: true,
+  }),
+  email: resendAdapter({
+    defaultFromAddress: "noreply@digiinsta.store",
+    defaultFromName: "DigiInsta",
+    apiKey: process.env.RESEND_API_KEY || "",
   }),
   sharp,
   plugins: [
@@ -95,13 +98,7 @@ export default buildConfig({
       },
     }),
     seoPlugin({
-      collections: [
-        "products",
-        "posts",
-        "bundles",
-        "categories",
-        "subcategories",
-      ],
+      collections: ["products", "posts", "bundles", "categories", "subcategories"],
       uploadsCollection: "media",
       tabbedUI: true,
       generateTitle,

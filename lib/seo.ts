@@ -17,7 +17,7 @@ export const SITE_DESCRIPTION =
 /**
  * Default Open Graph image
  */
-export const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-default.jpg`;
+export const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-default.png`;
 
 /**
  * Generates SEO title in format "DigiInsta — {document title}"

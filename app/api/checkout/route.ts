@@ -6,6 +6,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { Polar } from "@polar-sh/sdk";
+import { getPayload } from "payload";
+import config from "@payload-config";
 
 // Initialize Polar client
 function getPolarClient() {
@@ -25,6 +27,8 @@ interface CheckoutItem {
   polarProductId: string;
   productId: number;
   type: "product" | "bundle";
+  title?: string;
+  price?: number;
 }
 
 interface CheckoutRequest {
@@ -89,6 +93,33 @@ export async function POST(request: NextRequest) {
       metadata: checkoutMetadata,
       successUrl: `${appUrl}/checkout/success?checkout_id={CHECKOUT_ID}`,
     });
+
+    // Track checkout for cart abandonment emails
+    try {
+      const payload = await getPayload({ config });
+      const totalAmount = items.reduce((sum, item) => sum + (item.price || 0), 0);
+
+      await payload.create({
+        collection: "checkouts",
+        data: {
+          polarCheckoutId: checkout.id,
+          email: customerEmail || null,
+          items: items.map((item) => ({
+            type: item.type,
+            productId: item.productId,
+            title: item.title || `Product ${item.productId}`,
+            price: item.price || 0,
+          })),
+          totalAmount,
+          completed: false,
+          abandonmentEmailSent: false,
+          checkoutUrl: checkout.url,
+        },
+      });
+    } catch (trackingError) {
+      // Don't fail checkout if tracking fails
+      console.error("Failed to track checkout for abandonment:", trackingError);
+    }
 
     return NextResponse.json({
       checkoutId: checkout.id,
