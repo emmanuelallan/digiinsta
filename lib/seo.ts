@@ -20,6 +20,30 @@ export const SITE_DESCRIPTION =
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/images/og-default.png`;
 
 /**
+ * Generates a canonical URL for a given path
+ * Validates: Requirements 9.4
+ *
+ * @param path - The path to generate a canonical URL for (e.g., "/products/my-product")
+ * @returns The full canonical URL without query parameters or fragments
+ */
+export function getCanonicalUrl(path: string): string {
+  // Remove any query parameters or fragments
+  const pathWithoutQuery = path.split("?")[0] ?? "";
+  const cleanPath = pathWithoutQuery.split("#")[0] ?? "";
+
+  // Ensure path starts with /
+  const normalizedPath = cleanPath.startsWith("/") ? cleanPath : `/${cleanPath}`;
+
+  // Remove trailing slash except for root
+  const finalPath =
+    normalizedPath.length > 1 && normalizedPath.endsWith("/")
+      ? normalizedPath.slice(0, -1)
+      : normalizedPath;
+
+  return `${SITE_URL}${finalPath === "/" ? "" : finalPath}`;
+}
+
+/**
  * Generates SEO title in format "DigiInsta — {document title}"
  */
 export const generateTitle: GenerateTitle = ({ doc }) => {
@@ -420,5 +444,270 @@ export function getOfferCatalogSchema(
         },
       },
     })),
+  };
+}
+
+/**
+ * Review interface for product reviews
+ */
+export interface ProductReview {
+  author: string;
+  reviewBody: string;
+  reviewRating: number; // 1-5
+  datePublished?: string;
+}
+
+/**
+ * Enhanced product input interface with optional reviews and sale end date
+ */
+export interface EnhancedProductInput {
+  title: string;
+  slug: string;
+  shortDescription?: string | null;
+  price?: number;
+  compareAtPrice?: number | null;
+  saleEndDate?: string | null;
+  images?: Array<{ image?: { url?: string | null } }> | null;
+  subcategory?: { title: string; category?: { title: string } };
+  reviews?: ProductReview[] | null;
+}
+
+/**
+ * JSON-LD Enhanced Product Schema with AggregateRating and Review support
+ * Validates: Requirements 6.1, 6.2, 6.3
+ */
+export function getEnhancedProductSchema(product: EnhancedProductInput) {
+  const imageUrl = product.images?.[0]?.image?.url ?? DEFAULT_OG_IMAGE;
+  const price = product.price ? (product.price / 100).toFixed(2) : "0.00";
+  const hasReviews = product.reviews && product.reviews.length > 0;
+  const isOnSale =
+    product.compareAtPrice && product.price && product.compareAtPrice > product.price;
+
+  // Calculate aggregate rating if reviews exist
+  let aggregateRating = undefined;
+  let reviewSchemas = undefined;
+
+  if (hasReviews && product.reviews) {
+    const totalRating = product.reviews.reduce((sum, r) => sum + r.reviewRating, 0);
+    const avgRating = totalRating / product.reviews.length;
+
+    aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: Number(avgRating.toFixed(1)),
+      reviewCount: product.reviews.length,
+      bestRating: 5,
+      worstRating: 1,
+    };
+
+    reviewSchemas = product.reviews.map((review) => ({
+      "@type": "Review",
+      author: {
+        "@type": "Person",
+        name: review.author,
+      },
+      reviewBody: review.reviewBody,
+      reviewRating: {
+        "@type": "Rating",
+        ratingValue: review.reviewRating,
+        bestRating: 5,
+        worstRating: 1,
+      },
+      ...(review.datePublished && { datePublished: review.datePublished }),
+    }));
+  }
+
+  // Build offer schema with optional priceValidUntil for sale items
+  const offerSchema: Record<string, unknown> = {
+    "@type": "Offer",
+    price: price,
+    priceCurrency: "USD",
+    availability: "https://schema.org/InStock",
+    seller: {
+      "@type": "Organization",
+      name: SITE_NAME,
+    },
+  };
+
+  // Add priceValidUntil for sale items with end date (Requirement 6.3)
+  if (isOnSale && product.saleEndDate) {
+    offerSchema.priceValidUntil = product.saleEndDate;
+  }
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.title,
+    description:
+      product.shortDescription ?? `${product.title} - Premium digital product from ${SITE_NAME}`,
+    image: imageUrl,
+    url: `${SITE_URL}/products/${product.slug}`,
+    brand: {
+      "@type": "Brand",
+      name: SITE_NAME,
+    },
+    category: product.subcategory?.category?.title ?? "Digital Products",
+    offers: offerSchema,
+    ...(aggregateRating && { aggregateRating }),
+    ...(reviewSchemas && { review: reviewSchemas }),
+  };
+}
+
+/**
+ * Blog post input interface for article schema
+ */
+export interface BlogPostInput {
+  title: string;
+  slug: string;
+  excerpt?: string | null;
+  content?: string | null; // Plain text content for word count
+  featuredImage?: { url?: string | null } | null;
+  category?: { title: string } | null;
+  createdBy?: { name?: string | null } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Calculate reading time based on word count (200 words per minute)
+ */
+export function calculateReadingTime(wordCount: number): number {
+  return Math.ceil(wordCount / 200);
+}
+
+/**
+ * Convert minutes to ISO 8601 duration format
+ */
+export function formatDurationISO8601(minutes: number): string {
+  return `PT${minutes}M`;
+}
+
+/**
+ * Count words in text content
+ */
+export function countWords(text: string): number {
+  if (!text || text.trim().length === 0) return 0;
+  return text.trim().split(/\s+/).filter(Boolean).length;
+}
+
+/**
+ * JSON-LD Article/BlogPosting Schema
+ * Validates: Requirements 8.1, 8.2
+ */
+export function getArticleSchema(post: BlogPostInput) {
+  const imageUrl = post.featuredImage?.url ?? DEFAULT_OG_IMAGE;
+  const authorName = post.createdBy?.name ?? SITE_NAME;
+  const wordCount = post.content ? countWords(post.content) : 0;
+  const readingTimeMinutes = calculateReadingTime(wordCount);
+  const timeRequired = formatDurationISO8601(readingTimeMinutes);
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.excerpt ?? `${post.title} - Blog post from ${SITE_NAME}`,
+    image: imageUrl,
+    url: `${SITE_URL}/blog/${post.slug}`,
+    author: {
+      "@type": "Person",
+      name: authorName,
+    },
+    publisher: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_URL}/images/logo.png`,
+      },
+    },
+    datePublished: post.createdAt,
+    dateModified: post.updatedAt,
+    wordCount: wordCount,
+    timeRequired: timeRequired,
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": `${SITE_URL}/blog/${post.slug}`,
+    },
+    ...(post.category && {
+      articleSection: post.category.title,
+    }),
+  };
+}
+
+/**
+ * JSON-LD BlogPosting Schema (more specific than Article)
+ * Validates: Requirements 8.1, 8.2
+ */
+export function getBlogPostingSchema(post: BlogPostInput) {
+  const articleSchema = getArticleSchema(post);
+  return {
+    ...articleSchema,
+    "@type": "BlogPosting",
+  };
+}
+
+/**
+ * Enhanced Bundle input interface for ProductGroup schema
+ */
+export interface EnhancedBundleInput {
+  title: string;
+  slug: string;
+  shortDescription?: string | null;
+  price?: number;
+  compareAtPrice?: number | null;
+  heroImage?: { url?: string | null } | null;
+  products?: Array<{ title: string; slug: string; price?: number }>;
+}
+
+/**
+ * JSON-LD ProductGroup Schema for bundles
+ * Validates: Requirements 6.4
+ */
+export function getProductGroupSchema(bundle: EnhancedBundleInput) {
+  const price = bundle.price ? (bundle.price / 100).toFixed(2) : "0.00";
+  const productCount = bundle.products?.length ?? 0;
+
+  // Build isRelatedTo array with full product URLs
+  const relatedProducts = bundle.products?.map((product) => ({
+    "@type": "Product",
+    name: product.title,
+    url: `${SITE_URL}/products/${product.slug}`,
+    ...(product.price && {
+      offers: {
+        "@type": "Offer",
+        price: (product.price / 100).toFixed(2),
+        priceCurrency: "USD",
+      },
+    }),
+  }));
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "ProductGroup",
+    name: bundle.title,
+    description: bundle.shortDescription ?? `${bundle.title} - Premium bundle from ${SITE_NAME}`,
+    image: bundle.heroImage?.url ?? DEFAULT_OG_IMAGE,
+    url: `${SITE_URL}/bundles/${bundle.slug}`,
+    brand: {
+      "@type": "Brand",
+      name: SITE_NAME,
+    },
+    productGroupID: bundle.slug,
+    hasVariant: relatedProducts,
+    variesBy: "https://schema.org/Product",
+    offers: {
+      "@type": "AggregateOffer",
+      lowPrice: price,
+      highPrice: price,
+      priceCurrency: "USD",
+      offerCount: productCount,
+      availability: "https://schema.org/InStock",
+      seller: {
+        "@type": "Organization",
+        name: SITE_NAME,
+      },
+    },
+    ...(productCount > 0 && {
+      isRelatedTo: relatedProducts,
+    }),
   };
 }

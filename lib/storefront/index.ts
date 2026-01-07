@@ -13,6 +13,7 @@ export {
   getSaleProducts,
   getRelatedProducts,
   searchProducts,
+  searchProductsWithFilters,
   getProductsByCategory,
   getProductsBySubcategory,
   getProductsByPersona,
@@ -42,7 +43,15 @@ export { getHeroSlides } from "./hero";
 export type { HeroSlide } from "./hero";
 
 // Search utilities
-export { search } from "./search";
+export {
+  search,
+  searchWithFilters,
+  applyFiltersToProducts,
+  applySortToProducts,
+  productMatchesQuery,
+  getFilterOptions,
+} from "./search";
+export type { SearchFilters, EnhancedSearchResult } from "./search";
 
 // Blog utilities
 export {
@@ -54,3 +63,22 @@ export {
   getBlogCategories,
 } from "./blog";
 export type { BlogPost } from "./blog";
+
+// Recommendations utilities
+export {
+  getFrequentlyBoughtTogether,
+  getCustomersAlsoViewed,
+  getRelatedCategories,
+  getSubcategoriesWithCounts,
+} from "./recommendations";
+
+// Search suggestions utilities
+export {
+  getSearchSuggestions,
+  getPopularSuggestions,
+  getRecentSearches,
+  saveRecentSearch,
+  clearRecentSearches,
+  suggestionMatchesQuery,
+} from "./search-suggestions";
+export type { SearchSuggestion } from "./search-suggestions";

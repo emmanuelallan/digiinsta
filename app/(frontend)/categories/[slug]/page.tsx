@@ -2,9 +2,15 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { getCategoryBySlug, getProductsGroupedBySubcategory } from "@/lib/storefront";
+import { getPayload } from "payload";
+import config from "@payload-config";
+import {
+  getCategoryBySlug,
+  getProductsGroupedBySubcategory,
+  getRelatedCategories,
+} from "@/lib/storefront";
 import { ProductGrid } from "@/components/storefront/product";
-import { NoProductsFound } from "@/components/storefront/shared";
+import { NoProductsFound, RelatedCategories } from "@/components/storefront/shared";
 import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
@@ -15,6 +21,29 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { getCategorySchema, getBreadcrumbSchema, SITE_URL, SITE_NAME } from "@/lib/seo";
+
+// ISR revalidation: 24 hours for category pages
+export const revalidate = 86400;
+
+/**
+ * Generate static params for all active categories
+ * Pre-renders category pages at build time for better performance
+ */
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  const payload = await getPayload({ config });
+
+  const result = await payload.find({
+    collection: "categories",
+    where: { status: { equals: "active" } },
+    limit: 100,
+    depth: 0,
+    select: { slug: true },
+  });
+
+  return result.docs.map((category) => ({
+    slug: category.slug,
+  }));
+}
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -92,6 +121,9 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   }
 
   const groupedProducts = await getProductsGroupedBySubcategory(slug, 12);
+
+  // Get related categories for internal linking
+  const relatedCategoriesData = await getRelatedCategories(category.id, 4);
 
   // Calculate total product count
   const totalProducts = groupedProducts.reduce((sum, group) => sum + group.totalProducts, 0);
@@ -235,6 +267,19 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
             )}
           </div>
         </section>
+
+        {/* Related Categories */}
+        {relatedCategoriesData.siblings.length > 0 && (
+          <section className="border-t py-10 lg:py-14">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <RelatedCategories
+                siblingCategories={relatedCategoriesData.siblings}
+                limit={4}
+                title="Explore More Categories"
+              />
+            </div>
+          </section>
+        )}
       </div>
     </>
   );

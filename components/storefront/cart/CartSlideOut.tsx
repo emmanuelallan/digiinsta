@@ -93,10 +93,10 @@ export function CartSlideOut() {
                         </div>
                         <button
                           onClick={() => removeItem(item.id)}
-                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mt-1 -mr-1.5 rounded-full p-1.5 transition-colors"
+                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 -mt-1 -mr-1.5 flex h-11 min-h-[44px] w-11 min-w-[44px] items-center justify-center rounded-full transition-colors"
                           aria-label={`Remove ${item.title} from cart`}
                         >
-                          <HugeiconsIcon icon={Cancel01Icon} size={16} />
+                          <HugeiconsIcon icon={Cancel01Icon} size={18} />
                         </button>
                       </div>
 
@@ -163,10 +163,10 @@ export function CartSlideOut() {
                     variant="ghost"
                     size="icon"
                     onClick={clearCart}
-                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive h-10 w-10"
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive h-11 min-h-[44px] w-11 min-w-[44px]"
                     aria-label="Clear cart"
                   >
-                    <HugeiconsIcon icon={Delete02Icon} size={18} />
+                    <HugeiconsIcon icon={Delete02Icon} size={20} />
                   </Button>
                 </div>
               </div>

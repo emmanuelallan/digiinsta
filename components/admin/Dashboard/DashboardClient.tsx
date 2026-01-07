@@ -38,22 +38,25 @@ export function DashboardClient({
   const [error, setError] = useState<string | null>(initialError);
   const [isPending, startTransition] = useTransition();
 
-  const handlePeriodChange = useCallback(async (newPeriod: TimePeriod) => {
+  const handlePeriodChange = useCallback((newPeriod: TimePeriod) => {
     setPeriod(newPeriod);
     setError(null);
 
-    startTransition(async () => {
-      try {
-        const response = await fetch(`/api/analytics?period=${newPeriod}`);
-        if (!response.ok) {
-          throw new Error("Failed to fetch data");
-        }
-        const newData = await response.json();
-        setData(newData);
-      } catch (e) {
-        console.error("Failed to fetch dashboard data:", e);
-        setError("Unable to load data. Please try again.");
-      }
+    startTransition(() => {
+      fetch(`/api/analytics?period=${newPeriod}`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Failed to fetch data");
+          }
+          return response.json();
+        })
+        .then((newData) => {
+          setData(newData);
+        })
+        .catch((e) => {
+          console.error("Failed to fetch dashboard data:", e);
+          setError("Unable to load data. Please try again.");
+        });
     });
   }, []);
 
@@ -85,9 +88,7 @@ export function DashboardClient({
           <h1 className="admin-dashboard__title">Revenue Dashboard</h1>
           <PeriodSelector value={period} onChange={handlePeriodChange} />
         </div>
-        <div className="admin-dashboard__loading">
-          Loading dashboard data...
-        </div>
+        <div className="admin-dashboard__loading">Loading dashboard data...</div>
       </div>
     );
   }
@@ -99,9 +100,7 @@ export function DashboardClient({
         <PeriodSelector value={period} onChange={handlePeriodChange} />
       </div>
 
-      {isPending && (
-        <div className="admin-dashboard__loading-overlay">Updating...</div>
-      )}
+      {isPending && <div className="admin-dashboard__loading-overlay">Updating...</div>}
 
       <div className="admin-dashboard__grid">
         {/* Revenue Card - spans 4 columns */}
@@ -116,10 +115,7 @@ export function DashboardClient({
 
         {/* Goal Progress Card - spans 4 columns */}
         <div className="admin-dashboard__col admin-dashboard__col--4">
-          <GoalProgressCard
-            partners={data.revenue.byPartner}
-            goalAmount={goalAmount}
-          />
+          <GoalProgressCard partners={data.revenue.byPartner} goalAmount={goalAmount} />
         </div>
 
         {/* Top Products Table - spans 6 columns */}

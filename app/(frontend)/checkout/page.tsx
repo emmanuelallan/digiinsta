@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/breadcrumb";
 import { useCart } from "@/lib/cart";
 import { formatPrice, isOnSale, calculateSavingsPercent } from "@/lib/cart/utils";
+import { TrustSignals } from "@/components/storefront/shared";
 
 export default function CheckoutPage() {
   const { cart, itemCount, subtotal, savings } = useCart();
@@ -221,6 +222,9 @@ export default function CheckoutPage() {
             Secure checkout powered by Polar
           </p>
         </div>
+
+        {/* Trust Signals */}
+        <TrustSignals variant="checkout" showPaymentMethods className="mt-6" />
 
         {/* Info */}
         <div className="bg-muted/50 mt-8 rounded-lg p-4">

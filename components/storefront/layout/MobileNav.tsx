@@ -20,14 +20,8 @@ import {
   ShoppingBag01Icon,
   Notebook01Icon,
 } from "@hugeicons/core-free-icons";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import type { MegaMenuCategory } from "@/types/storefront";
 import { PERSONAS } from "@/types/storefront";
@@ -68,48 +62,45 @@ export function MobileNav({ categories }: MobileNavProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="lg:hidden h-11 w-11 min-h-[44px] min-w-[44px]"
+          className="h-11 min-h-[44px] w-11 min-w-[44px] lg:hidden"
         >
           <HugeiconsIcon icon={Menu01Icon} size={24} />
           <span className="sr-only">Open menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-full sm:w-[400px] p-0">
+      <SheetContent
+        side="left"
+        hideCloseButton
+        className="flex h-full w-full flex-col p-0 sm:w-[400px]"
+      >
         <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-        <div className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-4 border-b">
-            {view !== "main" ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setView("main")}
-                className="gap-2"
-              >
-                <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
-                Back
-              </Button>
-            ) : (
-              <span className="font-semibold text-lg">Menu</span>
-            )}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClose}
-              className="h-11 w-11 min-h-[44px] min-w-[44px]"
-            >
-              <HugeiconsIcon icon={Cancel01Icon} size={20} />
-              <span className="sr-only">Close menu</span>
+        {/* Header - fixed at top */}
+        <div className="flex shrink-0 items-center justify-between border-b p-4">
+          {view !== "main" ? (
+            <Button variant="ghost" size="sm" onClick={() => setView("main")} className="gap-2">
+              <HugeiconsIcon icon={ArrowLeft01Icon} size={18} />
+              Back
             </Button>
-          </div>
+          ) : (
+            <span className="text-lg font-semibold">Menu</span>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleClose}
+            className="h-11 min-h-[44px] w-11 min-w-[44px]"
+          >
+            <HugeiconsIcon icon={Cancel01Icon} size={20} />
+            <span className="sr-only">Close menu</span>
+          </Button>
+        </div>
 
-          <ScrollArea className="flex-1">
-            {view === "main" && (
-              <MainView onNavigate={setView} onClose={handleClose} />
-            )}
-            {view === "categories" && (
-              <CategoriesView categories={categories} onClose={handleClose} />
-            )}
-          </ScrollArea>
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {view === "main" && <MainView onNavigate={setView} onClose={handleClose} />}
+          {view === "categories" && (
+            <CategoriesView categories={categories} onClose={handleClose} />
+          )}
         </div>
       </SheetContent>
     </Sheet>
@@ -124,7 +115,7 @@ function MainView({
   onClose: () => void;
 }) {
   return (
-    <div className="p-4 space-y-2">
+    <div className="space-y-2 p-4">
       <NavLink href="/" icon={Home01Icon} onClick={onClose}>
         Home
       </NavLink>
@@ -133,27 +124,15 @@ function MainView({
         New Arrivals
       </NavLink>
 
-      <NavLink
-        href="/best-sellers"
-        icon={ChartLineData01Icon}
-        onClick={onClose}
-      >
+      <NavLink href="/best-sellers" icon={ChartLineData01Icon} onClick={onClose}>
         Best Sellers
       </NavLink>
 
-      <NavButton
-        icon={ShoppingBag01Icon}
-        onClick={() => onNavigate("categories")}
-      >
+      <NavButton icon={ShoppingBag01Icon} onClick={() => onNavigate("categories")}>
         Shop by
       </NavButton>
 
-      <NavLink
-        href="/sale"
-        icon={ShoppingBag01Icon}
-        onClick={onClose}
-        className="text-rose-500"
-      >
+      <NavLink href="/sale" icon={ShoppingBag01Icon} onClick={onClose} className="text-rose-500">
         On Sale
       </NavLink>
 
@@ -169,21 +148,21 @@ function MainView({
         <Link
           href="/about"
           onClick={onClose}
-          className="block px-3 py-3 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground block min-h-[44px] px-3 py-3 text-sm transition-colors"
         >
           About Us
         </Link>
         <Link
           href="/contact"
           onClick={onClose}
-          className="block px-3 py-3 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground block min-h-[44px] px-3 py-3 text-sm transition-colors"
         >
           Contact
         </Link>
         <Link
           href="/help/faq"
           onClick={onClose}
-          className="block px-3 py-3 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors"
+          className="text-muted-foreground hover:text-foreground block min-h-[44px] px-3 py-3 text-sm transition-colors"
         >
           Help & FAQ
         </Link>
@@ -200,9 +179,9 @@ function CategoriesView({
   onClose: () => void;
 }) {
   return (
-    <div className="p-4 space-y-2">
+    <div className="space-y-2 p-4">
       {/* Categories Section */}
-      <h3 className="px-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+      <h3 className="text-muted-foreground mb-4 px-3 text-sm font-semibold tracking-wide uppercase">
         Categories
       </h3>
       {categories.map((category) => {
@@ -212,34 +191,28 @@ function CategoriesView({
             <Link
               href={category.href}
               onClick={onClose}
-              className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent transition-colors"
+              className="hover:bg-accent flex items-center gap-3 rounded-lg px-3 py-3 transition-colors"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                <HugeiconsIcon
-                  icon={iconElement}
-                  size={20}
-                  className="text-muted-foreground"
-                />
+              <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-lg">
+                <HugeiconsIcon icon={iconElement} size={20} className="text-muted-foreground" />
               </div>
               <div className="flex-1">
-                <span className="font-medium text-foreground">
-                  {category.title}
-                </span>
+                <span className="text-foreground font-medium">{category.title}</span>
                 {category.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-1">
+                  <p className="text-muted-foreground line-clamp-1 text-xs">
                     {category.description}
                   </p>
                 )}
               </div>
             </Link>
             {category.subcategories.length > 0 && (
-              <div className="ml-16 mt-1 mb-3 space-y-1">
+              <div className="mt-1 mb-3 ml-16 space-y-1">
                 {category.subcategories.map((sub) => (
                   <Link
                     key={sub.slug}
                     href={sub.href}
                     onClick={onClose}
-                    className="block py-3 min-h-[44px] text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="text-muted-foreground hover:text-foreground block min-h-[44px] py-3 text-sm transition-colors"
                   >
                     {sub.title}
                   </Link>
@@ -253,7 +226,7 @@ function CategoriesView({
       <Separator className="my-4" />
 
       {/* Personas Section */}
-      <h3 className="px-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4">
+      <h3 className="text-muted-foreground mb-4 px-3 text-sm font-semibold tracking-wide uppercase">
         Shop for
       </h3>
       {PERSONAS.map((persona) => {
@@ -263,20 +236,14 @@ function CategoriesView({
             key={persona.id}
             href={`/shop/${persona.slug}`}
             onClick={onClose}
-            className="flex items-center gap-4 px-3 py-3 rounded-lg hover:bg-accent transition-colors"
+            className="hover:bg-accent flex items-center gap-4 rounded-lg px-3 py-3 transition-colors"
           >
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted shrink-0">
-              <HugeiconsIcon
-                icon={iconElement}
-                size={24}
-                className="text-muted-foreground"
-              />
+            <div className="bg-muted flex h-12 w-12 shrink-0 items-center justify-center rounded-xl">
+              <HugeiconsIcon icon={iconElement} size={24} className="text-muted-foreground" />
             </div>
             <div>
-              <span className="font-medium text-foreground">
-                {persona.title}
-              </span>
-              <p className="text-xs text-muted-foreground">
+              <span className="text-foreground font-medium">{persona.title}</span>
+              <p className="text-muted-foreground text-xs">
                 {persona.id === "student" && "Ace your studies"}
                 {persona.id === "professional" && "Level up your career"}
                 {persona.id === "couple" && "Celebrate together"}
@@ -306,16 +273,10 @@ function NavLink({
     <Link
       href={href}
       onClick={onClick}
-      className="flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-accent transition-colors"
+      className="hover:bg-accent flex items-center gap-3 rounded-lg px-3 py-3 transition-colors"
     >
-      <HugeiconsIcon
-        icon={icon}
-        size={20}
-        className={className ?? "text-muted-foreground"}
-      />
-      <span className={className ?? "font-medium text-foreground"}>
-        {children}
-      </span>
+      <HugeiconsIcon icon={icon} size={20} className={className ?? "text-muted-foreground"} />
+      <span className={className ?? "text-foreground font-medium"}>{children}</span>
     </Link>
   );
 }
@@ -332,21 +293,13 @@ function NavButton({
   return (
     <button
       onClick={onClick}
-      className="flex items-center justify-between w-full px-3 py-3 rounded-lg hover:bg-accent transition-colors"
+      className="hover:bg-accent flex w-full items-center justify-between rounded-lg px-3 py-3 transition-colors"
     >
       <div className="flex items-center gap-3">
-        <HugeiconsIcon
-          icon={icon}
-          size={20}
-          className="text-muted-foreground"
-        />
-        <span className="font-medium text-foreground">{children}</span>
+        <HugeiconsIcon icon={icon} size={20} className="text-muted-foreground" />
+        <span className="text-foreground font-medium">{children}</span>
       </div>
-      <HugeiconsIcon
-        icon={ArrowRight01Icon}
-        size={18}
-        className="text-muted-foreground"
-      />
+      <HugeiconsIcon icon={ArrowRight01Icon} size={18} className="text-muted-foreground" />
     </button>
   );
 }

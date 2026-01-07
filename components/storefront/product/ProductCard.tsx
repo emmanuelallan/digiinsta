@@ -7,25 +7,43 @@ import { Badge } from "@/components/ui/badge";
 import type { StorefrontProduct, ProductCardVariant } from "@/types/storefront";
 import { cn } from "@/lib/utils";
 import { formatPrice, isOnSale, calculateSavingsPercent } from "@/lib/cart/utils";
+import { QuickAddButton } from "./QuickAddButton";
+import { ProductBadges } from "./ProductBadges";
 
 interface ProductCardProps {
   product: StorefrontProduct;
   variant?: ProductCardVariant;
   className?: string;
+  /** Threshold for "Popular" badge (default: 10) */
+  popularThreshold?: number;
+  /** Show countdown timer for sales with end dates */
+  showSaleCountdown?: boolean;
 }
 
-export function ProductCard({ product, variant = "default", className }: ProductCardProps) {
+export function ProductCard({
+  product,
+  variant = "default",
+  className,
+  popularThreshold = 10,
+  showSaleCountdown = true,
+}: ProductCardProps) {
   const firstImage = product.images?.[0]?.image;
   const imageUrl = firstImage?.url ?? "/images/placeholder-product.jpg";
   const imageAlt = product.images?.[0]?.alt ?? product.title;
-
-  // Check for new product (created within last 14 days)
-  const isNew = new Date(product.createdAt).getTime() > Date.now() - 14 * 24 * 60 * 60 * 1000;
 
   // Check for featured tag
   const isFeatured = product.tags?.some(
     (t) => t.tag?.toLowerCase() === "featured" || t.tag?.toLowerCase() === "editors-pick"
   );
+
+  // Prepare product data for badges
+  const badgeProduct = {
+    createdAt: product.createdAt,
+    price: product.price ?? 0,
+    compareAtPrice: product.compareAtPrice,
+    salesCount: (product as unknown as { salesCount?: number }).salesCount,
+    saleEndDate: (product as unknown as { saleEndDate?: string }).saleEndDate,
+  };
 
   if (variant === "compact") {
     return (
@@ -39,11 +57,16 @@ export function ProductCard({ product, variant = "default", className }: Product
               className="object-cover transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
             />
-            {isNew && (
-              <Badge className="absolute top-2 left-2 bg-emerald-500 text-xs text-white hover:bg-emerald-600">
-                New
-              </Badge>
-            )}
+            {/* Product Badges */}
+            <div className="absolute top-2 left-2">
+              <ProductBadges
+                product={badgeProduct}
+                popularThreshold={popularThreshold}
+                showCountdown={false}
+                direction="vertical"
+                maxBadges={1}
+              />
+            </div>
           </div>
           <div className="space-y-1">
             <h3 className="text-foreground group-hover:text-primary line-clamp-1 text-sm font-medium transition-colors">
@@ -70,6 +93,15 @@ export function ProductCard({ product, variant = "default", className }: Product
           <div className="flex gap-4 p-4">
             <div className="bg-muted relative h-20 w-20 shrink-0 overflow-hidden rounded-lg">
               <Image src={imageUrl} alt={imageAlt} fill className="object-cover" sizes="80px" />
+              {/* Product Badges - compact for horizontal */}
+              <div className="absolute top-1 left-1">
+                <ProductBadges
+                  product={badgeProduct}
+                  popularThreshold={popularThreshold}
+                  showCountdown={false}
+                  maxBadges={1}
+                />
+              </div>
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-foreground group-hover:text-primary line-clamp-1 font-medium transition-colors">
@@ -110,20 +142,48 @@ export function ProductCard({ product, variant = "default", className }: Product
           {/* Gradient overlay on hover */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-          {/* Badges */}
+          {/* Product Badges */}
           <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-            {isNew && (
-              <Badge className="bg-emerald-500 text-xs text-white hover:bg-emerald-600">New</Badge>
-            )}
+            <ProductBadges
+              product={badgeProduct}
+              popularThreshold={popularThreshold}
+              showCountdown={showSaleCountdown}
+              direction="vertical"
+              maxBadges={3}
+            />
+            {/* Featured badge (from tags, not computed) */}
             {isFeatured && (
               <Badge className="bg-amber-500 text-xs text-white hover:bg-amber-600">Featured</Badge>
             )}
           </div>
 
-          {/* View Product text on hover */}
-          <div className="absolute inset-x-0 bottom-0 p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
-            <span className="text-sm font-medium text-white">View Product →</span>
-          </div>
+          {/* Quick Add Button overlay on hover */}
+          {product.polarProductId && product.price && product.price > 0 && (
+            <div className="absolute inset-x-0 bottom-0 p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              <QuickAddButton
+                product={{
+                  id: product.id,
+                  title: product.title,
+                  price: product.price,
+                  compareAtPrice: product.compareAtPrice,
+                  polarProductId: product.polarProductId,
+                  images: product.images?.map((img) => ({
+                    image: img.image ? { url: img.image.url ?? undefined } : null,
+                    alt: img.alt,
+                  })),
+                }}
+                variant="overlay"
+                className="w-full"
+              />
+            </div>
+          )}
+
+          {/* View Product text on hover (fallback when no polarProductId) */}
+          {(!product.polarProductId || !product.price || product.price <= 0) && (
+            <div className="absolute inset-x-0 bottom-0 p-4 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+              <span className="text-sm font-medium text-white">View Product →</span>
+            </div>
+          )}
         </div>
 
         {/* Content */}

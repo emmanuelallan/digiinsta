@@ -77,6 +77,8 @@ export function BundleActions({ bundle }: BundleActionsProps) {
           polarProductId={bundle.polarProductId}
           productId={bundle.id}
           type="bundle"
+          title={bundle.title}
+          price={bundle.price}
           size="lg"
           fullWidth
           className="py-6 text-base"

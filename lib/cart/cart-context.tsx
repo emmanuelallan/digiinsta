@@ -60,7 +60,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Load cart from localStorage on mount
   useEffect(() => {
     const storedCart = loadCartFromStorage();
-    setCart(storedCart);
+    // Only update if different from default
+    if (storedCart.items.length > 0 || storedCart !== defaultCart) {
+      setCart(storedCart);
+    }
     setIsLoading(false);
   }, []);
 

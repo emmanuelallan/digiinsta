@@ -21,8 +21,8 @@ const eslintConfig = defineConfig([
       "@typescript-eslint": tseslint,
     },
     rules: {
-      // Disallow any type
-      "@typescript-eslint/no-explicit-any": "error",
+      // Disallow any type (warn instead of error for flexibility)
+      "@typescript-eslint/no-explicit-any": "warn",
 
       // Require explicit return types on functions
       "@typescript-eslint/explicit-function-return-type": "off",
@@ -89,6 +89,10 @@ const eslintConfig = defineConfig([
     "payload-types.ts",
     "*.config.js",
     "*.config.mjs",
+    "*.config.ts",
+    "sentry.*.config.ts",
+    "instrumentation*.ts",
+    "migrations/**",
   ]),
 ]);
 

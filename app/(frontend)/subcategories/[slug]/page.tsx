@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { getPayload } from "payload";
+import config from "@payload-config";
 import { getSubcategoryBySlug, getProducts } from "@/lib/storefront";
 import { ProductGrid } from "@/components/storefront/product";
 import { NoProductsFound } from "@/components/storefront/shared";
@@ -22,6 +24,29 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+
+// ISR revalidation: 24 hours for subcategory pages
+export const revalidate = 86400;
+
+/**
+ * Generate static params for all active subcategories
+ * Pre-renders subcategory pages at build time for better performance
+ */
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  const payload = await getPayload({ config });
+
+  const result = await payload.find({
+    collection: "subcategories",
+    where: { status: { equals: "active" } },
+    limit: 500,
+    depth: 0,
+    select: { slug: true },
+  });
+
+  return result.docs.map((subcategory) => ({
+    slug: subcategory.slug,
+  }));
+}
 
 interface SubcategoryPageProps {
   params: Promise<{ slug: string }>;

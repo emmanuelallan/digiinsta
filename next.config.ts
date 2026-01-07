@@ -18,6 +18,64 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  /**
+   * Cache Headers Configuration
+   * Validates: Requirements 4.1, 4.2, 4.4
+   */
+  headers: async () => [
+    {
+      // Static assets (JS, CSS, fonts) - immutable, cache for 1 year
+      source: "/:path*.(js|css|woff|woff2|ttf|otf|eot)",
+      headers: [
+        {
+          key: "Cache-Control",
+          value: "public, max-age=31536000, immutable",
+        },
+      ],
+    },
+    {
+      // Images - cache for 1 year with revalidation
+      source: "/:path*.(png|jpg|jpeg|gif|webp|avif|ico|svg)",
+      headers: [
+        {
+          key: "Cache-Control",
+          value: "public, max-age=31536000, stale-while-revalidate=86400",
+        },
+      ],
+    },
+    {
+      // Next.js static files
+      source: "/_next/static/:path*",
+      headers: [
+        {
+          key: "Cache-Control",
+          value: "public, max-age=31536000, immutable",
+        },
+      ],
+    },
+    {
+      // HTML pages - short cache with revalidation for dynamic content
+      source: "/:path*",
+      headers: [
+        {
+          key: "X-Content-Type-Options",
+          value: "nosniff",
+        },
+        {
+          key: "X-Frame-Options",
+          value: "DENY",
+        },
+        {
+          key: "X-XSS-Protection",
+          value: "1; mode=block",
+        },
+        {
+          key: "Vary",
+          value: "Accept-Encoding, Accept",
+        },
+      ],
+    },
+  ],
 };
 
 export default withSentryConfig(withPayload(nextConfig), {

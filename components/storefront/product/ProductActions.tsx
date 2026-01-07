@@ -68,6 +68,8 @@ export function ProductActions({ product }: ProductActionsProps) {
           polarProductId={product.polarProductId}
           productId={product.id}
           type="product"
+          title={product.title}
+          price={product.price}
           size="lg"
           fullWidth
           className="py-6 text-base"

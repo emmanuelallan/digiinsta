@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -8,7 +9,9 @@ import {
   CarouselItem,
   CarouselPrevious,
   CarouselNext,
+  type CarouselApi,
 } from "@/components/ui/carousel";
+import { cn } from "@/lib/utils";
 import type { StorefrontCategory } from "@/types/storefront";
 
 interface HeroSectionProps {
@@ -16,6 +19,28 @@ interface HeroSectionProps {
 }
 
 export function HeroSection({ categories }: HeroSectionProps) {
+  const [api, setApi] = useState<CarouselApi>();
+  const [current, setCurrent] = useState(0);
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!api) return;
+
+    setCount(api.scrollSnapList().length);
+    setCurrent(api.selectedScrollSnap());
+
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap());
+    });
+  }, [api]);
+
+  const scrollTo = useCallback(
+    (index: number) => {
+      api?.scrollTo(index);
+    },
+    [api]
+  );
+
   return (
     <div className="bg-background">
       {/* Hero Section */}
@@ -48,12 +73,14 @@ export function HeroSection({ categories }: HeroSectionProps) {
             </div>
 
             <Carousel
+              setApi={setApi}
               opts={{
                 loop: true,
                 align: "start",
               }}
               className="w-full"
             >
+              {/* Partial peek on mobile: 85% width shows ~15% of next card */}
               <CarouselContent className="-ml-3 sm:-ml-4 lg:-ml-6">
                 {categories.map((category) => {
                   const imageUrl =
@@ -64,7 +91,7 @@ export function HeroSection({ categories }: HeroSectionProps) {
                   return (
                     <CarouselItem
                       key={category.id}
-                      className="basis-full pl-3 sm:basis-1/2 sm:pl-4 md:basis-1/3 lg:basis-1/4 lg:pl-6"
+                      className="basis-[85%] pl-3 sm:basis-1/2 sm:pl-4 md:basis-1/3 lg:basis-1/4 lg:pl-6"
                     >
                       <Link href={`/categories/${category.slug}`} className="group block">
                         <div className="relative aspect-[3/4] overflow-hidden rounded-xl">
@@ -101,10 +128,29 @@ export function HeroSection({ categories }: HeroSectionProps) {
                 })}
               </CarouselContent>
 
-              {/* Navigation Buttons */}
+              {/* Navigation Buttons - Desktop only */}
               <CarouselPrevious className="bg-background/80 border-border hover:bg-background -left-4 hidden h-10 w-10 shadow-lg backdrop-blur-sm sm:-left-5 sm:flex sm:h-12 sm:w-12" />
               <CarouselNext className="bg-background/80 border-border hover:bg-background -right-4 hidden h-10 w-10 shadow-lg backdrop-blur-sm sm:-right-5 sm:flex sm:h-12 sm:w-12" />
             </Carousel>
+
+            {/* Dot indicators - Mobile only */}
+            {count > 1 && (
+              <div className="mt-4 flex items-center justify-center gap-1.5 sm:hidden">
+                {Array.from({ length: count }).map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => scrollTo(index)}
+                    className={cn(
+                      "h-2 rounded-full transition-all duration-200",
+                      current === index
+                        ? "bg-primary w-6"
+                        : "bg-muted-foreground/30 hover:bg-muted-foreground/50 w-2"
+                    )}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </section>
       )}

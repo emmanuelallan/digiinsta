@@ -312,6 +312,137 @@ export async function searchProducts(query: string, limit = 10): Promise<Storefr
 }
 
 /**
+ * Search filters interface
+ */
+interface SearchFilters {
+  category?: string;
+  subcategory?: string;
+  priceRange?: { min: number; max: number };
+  tags?: string[];
+  sortBy?: "newest" | "price-asc" | "price-desc" | "best-selling" | "relevance";
+}
+
+/**
+ * Search products with filters and sorting
+ * Requirements: 15.2, 15.3
+ */
+export async function searchProductsWithFilters(
+  query: string,
+  filters: SearchFilters = {},
+  options?: { limit?: number; page?: number }
+): Promise<{
+  products: StorefrontProduct[];
+  totalDocs: number;
+  totalPages: number;
+}> {
+  const payload = await getPayloadClient();
+  const { limit = 12, page = 1 } = options ?? {};
+
+  // Build where clause
+  const where: Record<string, unknown> = {
+    status: { equals: "active" },
+  };
+
+  // Add search query condition
+  if (query && query.trim().length > 0) {
+    where.or = [{ title: { contains: query } }, { shortDescription: { contains: query } }];
+  }
+
+  // Filter by category (via subcategories)
+  if (filters.category) {
+    const category = await payload.find({
+      collection: "categories",
+      where: { slug: { equals: filters.category } },
+      limit: 1,
+    });
+    if (category.docs[0]) {
+      const subcategories = await payload.find({
+        collection: "subcategories",
+        where: { category: { equals: category.docs[0].id } },
+      });
+      const subcategoryIds = subcategories.docs.map((s) => s.id);
+      if (subcategoryIds.length > 0) {
+        where.subcategory = { in: subcategoryIds };
+      }
+    }
+  }
+
+  // Filter by subcategory
+  if (filters.subcategory) {
+    const subcategory = await payload.find({
+      collection: "subcategories",
+      where: { slug: { equals: filters.subcategory } },
+      limit: 1,
+    });
+    if (subcategory.docs[0]) {
+      where.subcategory = { equals: subcategory.docs[0].id };
+    }
+  }
+
+  // Filter by price range
+  if (filters.priceRange) {
+    const priceConditions: Record<string, unknown>[] = [];
+    if (filters.priceRange.min > 0) {
+      priceConditions.push({ price: { greater_than_equal: filters.priceRange.min } });
+    }
+    if (filters.priceRange.max > 0) {
+      priceConditions.push({ price: { less_than_equal: filters.priceRange.max } });
+    }
+    if (priceConditions.length > 0) {
+      where.and = [...((where.and as Record<string, unknown>[]) ?? []), ...priceConditions];
+    }
+  }
+
+  // Determine sort order
+  let sort: string;
+  switch (filters.sortBy) {
+    case "newest":
+      sort = "-createdAt";
+      break;
+    case "price-asc":
+      sort = "price";
+      break;
+    case "price-desc":
+      sort = "-price";
+      break;
+    case "best-selling":
+      // For best-selling, we sort by createdAt as fallback
+      // In a real implementation, you'd have a salesCount field
+      sort = "-createdAt";
+      break;
+    case "relevance":
+    default:
+      sort = "-createdAt";
+      break;
+  }
+
+  const result = await payload.find({
+    collection: "products",
+    where: where as Parameters<typeof payload.find>[0]["where"],
+    limit,
+    page,
+    sort,
+    depth: 3,
+  });
+
+  let products = result.docs.map(transformProduct);
+
+  // Post-filter by tags (Payload doesn't support nested array field queries well)
+  if (filters.tags && filters.tags.length > 0) {
+    const lowerTags = filters.tags.map((t) => t.toLowerCase());
+    products = products.filter((p) =>
+      p.tags?.some((t) => t.tag && lowerTags.includes(t.tag.toLowerCase()))
+    );
+  }
+
+  return {
+    products,
+    totalDocs: result.totalDocs,
+    totalPages: result.totalPages,
+  };
+}
+
+/**
  * Get products by category slug (via subcategories)
  */
 export async function getProductsByCategory(

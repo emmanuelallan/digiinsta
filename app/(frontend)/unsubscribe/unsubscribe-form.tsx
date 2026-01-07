@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,9 +53,9 @@ export function UnsubscribeForm() {
         <p className="text-gray-600">{message}</p>
         <p className="mt-4 text-sm text-gray-500">
           Changed your mind?{" "}
-          <a href="/" className="text-black underline">
+          <Link href="/" className="text-black underline">
             Visit our store
-          </a>
+          </Link>
         </p>
       </div>
     );

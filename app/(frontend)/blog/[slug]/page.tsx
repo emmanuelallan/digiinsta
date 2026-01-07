@@ -7,8 +7,8 @@ import {
   Calendar03Icon,
   UserIcon,
   ArrowLeft02Icon,
-  Newspaper,
   Share01Icon,
+  Clock01Icon,
 } from "@hugeicons/core-free-icons";
 import { getBlogPostBySlug, getRelatedPosts } from "@/lib/storefront";
 import { RichText } from "@/components/storefront/shared";
@@ -23,6 +23,14 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { getBreadcrumbSchema, SITE_URL, SITE_NAME } from "@/lib/seo";
+import {
+  getFormattedReadingTime,
+  extractTextFromRichContent,
+  countWords,
+  formatDurationISO8601,
+} from "@/lib/blog/reading-time";
+import { TableOfContents, RelatedPosts } from "@/components/storefront/blog";
+import { extractHeadings } from "@/lib/blog/toc-extraction";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -85,28 +93,49 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   // Get related posts
   const relatedPosts = await getRelatedPosts(post.id, post.category?.id ?? null, 3);
 
-  // Structured data
+  // Calculate reading time
+  const readingTime = getFormattedReadingTime(post.content);
+  const plainTextContent = extractTextFromRichContent(post.content);
+  const wordCount = countWords(plainTextContent);
+  const readingTimeMinutes = Math.ceil(wordCount / 200);
+  const timeRequired = formatDurationISO8601(readingTimeMinutes);
+
+  // Check if post has enough headings for TOC (3+ headings)
+  const headings = extractHeadings(post.content);
+  const showTableOfContents = headings.length >= 3;
+
+  // Enhanced Article Schema with reading time and word count
   const articleSchema = {
     "@context": "https://schema.org",
-    "@type": "Article",
+    "@type": "BlogPosting",
     headline: post.title,
     description: post.excerpt ?? `Read ${post.title} on the ${SITE_NAME} blog.`,
     image: post.featuredImage?.url,
     datePublished: post.createdAt,
     dateModified: post.updatedAt,
+    wordCount: wordCount,
+    timeRequired: timeRequired,
     author: {
       "@type": "Person",
       name: post.author.name ?? "DigiInsta Team",
+      url: `${SITE_URL}/blog`,
     },
     publisher: {
       "@type": "Organization",
       name: SITE_NAME,
       url: SITE_URL,
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_URL}/images/logo.png`,
+      },
     },
     mainEntityOfPage: {
       "@type": "WebPage",
       "@id": `${SITE_URL}/blog/${post.slug}`,
     },
+    ...(post.category && {
+      articleSection: post.category.title,
+    }),
   };
 
   const breadcrumbSchema = getBreadcrumbSchema([
@@ -197,6 +226,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 <HugeiconsIcon icon={Calendar03Icon} size={18} />
                 <time dateTime={post.createdAt}>{formatDate(post.createdAt)}</time>
               </div>
+              <div className="flex items-center gap-2">
+                <HugeiconsIcon icon={Clock01Icon} size={18} />
+                <span>{readingTime}</span>
+              </div>
             </div>
 
             {/* Excerpt */}
@@ -208,8 +241,42 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
         {/* Article Content */}
         <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+          {/* Table of Contents for long posts */}
+          {showTableOfContents && (
+            <TableOfContents
+              content={post.content}
+              className="mb-8"
+              title="In This Article"
+              minHeadings={3}
+            />
+          )}
+
           <div className="prose prose-lg prose-neutral dark:prose-invert mx-auto max-w-none">
             <RichText content={post.content} />
+          </div>
+
+          {/* Author Bio Section */}
+          <div className="mt-12 border-t pt-8">
+            <div className="flex items-start gap-4">
+              <div className="bg-primary/10 flex h-16 w-16 shrink-0 items-center justify-center rounded-full">
+                <HugeiconsIcon icon={UserIcon} size={32} className="text-primary" />
+              </div>
+              <div>
+                <h3 className="text-foreground text-lg font-semibold">
+                  {post.author.name ?? "DigiInsta Team"}
+                </h3>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Content creator at {SITE_NAME}. Passionate about helping people achieve their
+                  goals with digital tools and productivity systems.
+                </p>
+                <Link
+                  href="/blog"
+                  className="text-primary hover:text-primary/80 mt-2 inline-block text-sm font-medium"
+                >
+                  View all posts →
+                </Link>
+              </div>
+            </div>
           </div>
 
           {/* Share & Back */}
@@ -230,55 +297,16 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
         {/* Related Posts */}
         {relatedPosts.length > 0 && (
-          <section className="border-t py-12 lg:py-16">
+          <section className="border-t">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <h2 className="text-foreground mb-8 text-2xl font-bold">Related Posts</h2>
-
-              <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                {relatedPosts.map((relatedPost) => (
-                  <article key={relatedPost.id} className="group">
-                    <Link href={`/blog/${relatedPost.slug}`} className="block">
-                      {/* Image */}
-                      <div className="bg-muted relative aspect-[16/10] overflow-hidden rounded-xl">
-                        {relatedPost.featuredImage?.url ? (
-                          <Image
-                            src={relatedPost.featuredImage.url}
-                            alt={relatedPost.title}
-                            fill
-                            className="object-cover transition-transform duration-300 group-hover:scale-105"
-                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                          />
-                        ) : (
-                          <div className="from-primary/10 to-primary/5 flex h-full items-center justify-center bg-gradient-to-br">
-                            <HugeiconsIcon
-                              icon={Newspaper}
-                              size={40}
-                              className="text-muted-foreground/30"
-                            />
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="mt-4">
-                        {relatedPost.category && (
-                          <Badge variant="secondary" className="mb-2">
-                            {relatedPost.category.title}
-                          </Badge>
-                        )}
-
-                        <h3 className="text-foreground group-hover:text-primary line-clamp-2 text-lg font-semibold transition-colors">
-                          {relatedPost.title}
-                        </h3>
-
-                        <div className="text-muted-foreground mt-2 text-xs">
-                          {formatDate(relatedPost.createdAt)}
-                        </div>
-                      </div>
-                    </Link>
-                  </article>
-                ))}
-              </div>
+              <RelatedPosts
+                posts={relatedPosts}
+                title="Related Posts"
+                subtitle="Continue reading with these related articles"
+                viewAllHref="/blog"
+                viewAllLabel="View All Posts"
+                maxPosts={3}
+              />
             </div>
           </section>
         )}

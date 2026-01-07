@@ -17,6 +17,39 @@ interface RichTextNode {
   [key: string]: unknown;
 }
 
+// Track heading slugs for duplicate handling
+const headingSlugCounts = new Map<string, number>();
+
+/**
+ * Extracts text content from a node for slug generation
+ */
+function extractTextFromNode(node: RichTextNode): string {
+  if (node.text) {
+    return node.text;
+  }
+  if (node.children) {
+    return node.children.map(extractTextFromNode).join("");
+  }
+  return "";
+}
+
+/**
+ * Generates a URL-safe slug from heading text
+ */
+function generateHeadingSlug(text: string): string {
+  const baseSlug = text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
+
+  const count = headingSlugCounts.get(baseSlug) ?? 0;
+  headingSlugCounts.set(baseSlug, count + 1);
+
+  return count > 0 ? `${baseSlug}-${count}` : baseSlug;
+}
+
 interface RichTextContent {
   root: {
     type: string;
@@ -98,47 +131,49 @@ function renderNode(node: RichTextNode, index: number): React.ReactNode {
       };
       const className = headingClasses[tag];
       const children = node.children?.map((child, i) => renderNode(child, i));
+      const headingText = extractTextFromNode(node);
+      const headingId = generateHeadingSlug(headingText);
 
       switch (tag) {
         case "h1":
           return (
-            <h1 key={key} className={className}>
+            <h1 key={key} id={headingId} className={className}>
               {children}
             </h1>
           );
         case "h2":
           return (
-            <h2 key={key} className={className}>
+            <h2 key={key} id={headingId} className={className}>
               {children}
             </h2>
           );
         case "h3":
           return (
-            <h3 key={key} className={className}>
+            <h3 key={key} id={headingId} className={className}>
               {children}
             </h3>
           );
         case "h4":
           return (
-            <h4 key={key} className={className}>
+            <h4 key={key} id={headingId} className={className}>
               {children}
             </h4>
           );
         case "h5":
           return (
-            <h5 key={key} className={className}>
+            <h5 key={key} id={headingId} className={className}>
               {children}
             </h5>
           );
         case "h6":
           return (
-            <h6 key={key} className={className}>
+            <h6 key={key} id={headingId} className={className}>
               {children}
             </h6>
           );
         default:
           return (
-            <h2 key={key} className={className}>
+            <h2 key={key} id={headingId} className={className}>
               {children}
             </h2>
           );
@@ -220,6 +255,9 @@ export function RichText({ content, className }: RichTextProps) {
   if (!content?.root?.children) {
     return null;
   }
+
+  // Reset slug counter for each render
+  headingSlugCounts.clear();
 
   return (
     <div className={className}>

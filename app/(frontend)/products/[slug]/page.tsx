@@ -2,8 +2,19 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { getProductBySlug, getRelatedProducts } from "@/lib/storefront";
-import { ProductImageGallery, ProductGrid } from "@/components/storefront/product";
+import { getPayload } from "payload";
+import config from "@payload-config";
+import {
+  getProductBySlug,
+  getRelatedProducts,
+  getFrequentlyBoughtTogether,
+} from "@/lib/storefront";
+import {
+  ProductImageGallery,
+  ProductGrid,
+  ProductPageClient,
+  FrequentlyBoughtTogether,
+} from "@/components/storefront/product";
 import { ProductActions } from "@/components/storefront/product/ProductActions";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,8 +25,31 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { RichText } from "@/components/storefront/shared";
+import { RichText, TrustSignals } from "@/components/storefront/shared";
 import { getProductSchema, getBreadcrumbSchema, SITE_URL, SITE_NAME } from "@/lib/seo";
+
+// ISR revalidation: 1 hour for product pages
+export const revalidate = 3600;
+
+/**
+ * Generate static params for all active products
+ * Pre-renders product pages at build time for better performance
+ */
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  const payload = await getPayload({ config });
+
+  const result = await payload.find({
+    collection: "products",
+    where: { status: { equals: "active" } },
+    limit: 1000,
+    depth: 0,
+    select: { slug: true },
+  });
+
+  return result.docs.map((product) => ({
+    slug: product.slug,
+  }));
+}
 
 // Feature badges data
 const featureBadges = [
@@ -112,6 +146,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
   // Get related products from the same subcategory
   const relatedProducts = await getRelatedProducts(product.id, product.subcategory.id, 4);
 
+  // Get frequently bought together products
+  const frequentlyBoughtTogether = await getFrequentlyBoughtTogether(product.id, 3);
+
   // Structured data
   const productSchema = getProductSchema({
     title: product.title,
@@ -197,49 +234,63 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
               {/* Right: Product Info - 2/6 width */}
               <div className="xl:col-span-2">
-                <div className="space-y-5 xl:sticky xl:top-24">
-                  {/* Title */}
-                  <h1 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl">
-                    {product.title}
-                  </h1>
+                <ProductPageClient
+                  product={{
+                    id: product.id,
+                    title: product.title,
+                    price: product.price,
+                    compareAtPrice: product.compareAtPrice,
+                    polarProductId: product.polarProductId,
+                    images: product.images,
+                  }}
+                >
+                  <div className="space-y-5 xl:sticky xl:top-24">
+                    {/* Title */}
+                    <h1 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl">
+                      {product.title}
+                    </h1>
 
-                  {/* Short Description */}
-                  {product.shortDescription && (
-                    <p className="text-muted-foreground text-base leading-relaxed">
-                      {product.shortDescription}
-                    </p>
-                  )}
-
-                  {/* Price & CTA Buttons */}
-                  <ProductActions
-                    product={{
-                      id: product.id,
-                      title: product.title,
-                      price: product.price,
-                      compareAtPrice: product.compareAtPrice,
-                      polarProductId: product.polarProductId,
-                      images: product.images,
-                    }}
-                  />
-
-                  {/* Tags */}
-                  {product.tags && product.tags.length > 0 && (
-                    <div className="border-t pt-6">
-                      <p className="text-muted-foreground mb-3 text-xs tracking-wider uppercase">
-                        Tags
+                    {/* Short Description */}
+                    {product.shortDescription && (
+                      <p className="text-muted-foreground text-base leading-relaxed">
+                        {product.shortDescription}
                       </p>
-                      <div className="flex flex-wrap gap-2">
-                        {product.tags.map((tag) =>
-                          tag.tag ? (
-                            <Badge key={tag.id} variant="secondary" className="text-xs">
-                              {tag.tag}
-                            </Badge>
-                          ) : null
-                        )}
+                    )}
+
+                    {/* Price & CTA Buttons */}
+                    <ProductActions
+                      product={{
+                        id: product.id,
+                        title: product.title,
+                        price: product.price,
+                        compareAtPrice: product.compareAtPrice,
+                        polarProductId: product.polarProductId,
+                        images: product.images,
+                      }}
+                    />
+
+                    {/* Trust Signals */}
+                    <TrustSignals variant="product" className="mt-6" />
+
+                    {/* Tags */}
+                    {product.tags && product.tags.length > 0 && (
+                      <div className="border-t pt-6">
+                        <p className="text-muted-foreground mb-3 text-xs tracking-wider uppercase">
+                          Tags
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {product.tags.map((tag) =>
+                            tag.tag ? (
+                              <Badge key={tag.id} variant="secondary" className="text-xs">
+                                {tag.tag}
+                              </Badge>
+                            ) : null
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
+                </ProductPageClient>
               </div>
             </div>
           </div>
@@ -289,6 +340,29 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   </div>
                 </aside>
               </div>
+            </div>
+          </section>
+        )}
+
+        {/* Frequently Bought Together */}
+        {frequentlyBoughtTogether.length > 0 && product.polarProductId && product.price && (
+          <section className="border-t py-10 lg:py-12">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+              <FrequentlyBoughtTogether
+                sourceProduct={{
+                  id: product.id,
+                  title: product.title,
+                  price: product.price,
+                  compareAtPrice: product.compareAtPrice,
+                  polarProductId: product.polarProductId,
+                  images: product.images?.map((img) => ({
+                    image: img.image ? { url: img.image.url ?? undefined } : null,
+                    alt: img.alt,
+                  })),
+                }}
+                relatedProducts={frequentlyBoughtTogether}
+                limit={3}
+              />
             </div>
           </section>
         )}

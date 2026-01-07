@@ -1,123 +1,235 @@
 import type { MetadataRoute } from "next";
 import { getPayload } from "payload";
 import config from "@payload-config";
-import { SITE_URL } from "@/lib/seo";
+import {
+  generateCanonicalUrl,
+  getChangeFrequency,
+  getPriority,
+  MAX_URLS_PER_SITEMAP,
+} from "@/lib/sitemap";
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+/**
+ * URLs per sitemap chunk for sitemap index
+ * Using a conservative limit to ensure fast generation
+ */
+const URLS_PER_SITEMAP = 10000;
+
+/**
+ * Generates sitemap index for large catalogs
+ * Returns array of sitemap IDs when total URLs exceed URLS_PER_SITEMAP
+ * Validates: Requirements 9.2
+ */
+export async function generateSitemaps(): Promise<{ id: number }[]> {
   const payload = await getPayload({ config });
 
-  // Static pages
-  const staticPages: MetadataRoute.Sitemap = [
-    {
-      url: SITE_URL,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: `${SITE_URL}/categories`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.9,
-    },
-    {
-      url: `${SITE_URL}/products`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
-    {
-      url: `${SITE_URL}/bundles`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/blog`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/new-arrivals`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/best-sellers`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${SITE_URL}/sale`,
-      lastModified: new Date(),
-      changeFrequency: "daily",
-      priority: 0.7,
-    },
-    {
-      url: `${SITE_URL}/shop/student`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.7,
-    },
-    {
-      url: `${SITE_URL}/shop/professional`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.7,
-    },
-    {
-      url: `${SITE_URL}/shop/couple`,
-      lastModified: new Date(),
-      changeFrequency: "weekly",
-      priority: 0.7,
-    },
-  ];
+  // Count total URLs
+  const [productsCount, categoriesCount, subcategoriesCount, bundlesCount, postsCount] =
+    await Promise.all([
+      payload.count({
+        collection: "products",
+        where: { status: { equals: "active" } },
+      }),
+      payload.count({
+        collection: "categories",
+        where: { status: { equals: "active" } },
+      }),
+      payload.count({
+        collection: "subcategories",
+        where: { status: { equals: "active" } },
+      }),
+      payload.count({
+        collection: "bundles",
+        where: { status: { equals: "active" } },
+      }),
+      payload.count({
+        collection: "posts",
+        where: { status: { equals: "published" } },
+      }),
+    ]);
 
-  // Fetch all active products
+  // Static pages count (approximately 16 pages)
+  const staticPagesCount = 16;
+
+  const totalUrls =
+    staticPagesCount +
+    productsCount.totalDocs +
+    categoriesCount.totalDocs +
+    subcategoriesCount.totalDocs +
+    bundlesCount.totalDocs +
+    postsCount.totalDocs;
+
+  // Calculate number of sitemaps needed
+  const numSitemaps = Math.ceil(totalUrls / URLS_PER_SITEMAP);
+
+  // Return array of sitemap IDs
+  return Array.from({ length: Math.max(1, numSitemaps) }, (_, i) => ({ id: i }));
+}
+
+/**
+ * Generates the main sitemap with all site URLs
+ * Supports pagination for sitemap index
+ * Validates: Requirements 9.1, 9.2
+ */
+export default async function sitemap({ id }: { id: number }): Promise<MetadataRoute.Sitemap> {
+  const payload = await getPayload({ config });
+  const now = new Date();
+
+  // Calculate offset for pagination
+  const offset = id * URLS_PER_SITEMAP;
+
+  // Static pages with proper attributes (only include in first sitemap)
+  const staticPages: MetadataRoute.Sitemap =
+    id === 0
+      ? [
+          {
+            url: generateCanonicalUrl("/"),
+            lastModified: now,
+            changeFrequency: "daily",
+            priority: getPriority("home"),
+          },
+          {
+            url: generateCanonicalUrl("/categories"),
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: getPriority("listing"),
+          },
+          {
+            url: generateCanonicalUrl("/products"),
+            lastModified: now,
+            changeFrequency: "daily",
+            priority: getPriority("listing"),
+          },
+          {
+            url: generateCanonicalUrl("/bundles"),
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: 0.8,
+          },
+          {
+            url: generateCanonicalUrl("/blog"),
+            lastModified: now,
+            changeFrequency: "daily",
+            priority: 0.8,
+          },
+          {
+            url: generateCanonicalUrl("/new-arrivals"),
+            lastModified: now,
+            changeFrequency: "daily",
+            priority: 0.8,
+          },
+          {
+            url: generateCanonicalUrl("/best-sellers"),
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: 0.8,
+          },
+          {
+            url: generateCanonicalUrl("/sale"),
+            lastModified: now,
+            changeFrequency: "daily",
+            priority: 0.7,
+          },
+          {
+            url: generateCanonicalUrl("/shop/student"),
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: 0.7,
+          },
+          {
+            url: generateCanonicalUrl("/shop/professional"),
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: 0.7,
+          },
+          {
+            url: generateCanonicalUrl("/shop/couple"),
+            lastModified: now,
+            changeFrequency: "weekly",
+            priority: 0.7,
+          },
+          {
+            url: generateCanonicalUrl("/about"),
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.5,
+          },
+          {
+            url: generateCanonicalUrl("/contact"),
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.5,
+          },
+          {
+            url: generateCanonicalUrl("/help/faq"),
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.5,
+          },
+          {
+            url: generateCanonicalUrl("/terms"),
+            lastModified: now,
+            changeFrequency: "yearly",
+            priority: 0.3,
+          },
+          {
+            url: generateCanonicalUrl("/privacy"),
+            lastModified: now,
+            changeFrequency: "yearly",
+            priority: 0.3,
+          },
+        ]
+      : [];
+
+  // Calculate remaining space after static pages
+  const staticPagesCount = staticPages.length;
+  const remainingSpace = URLS_PER_SITEMAP - staticPagesCount;
+
+  // Adjust offset for dynamic content (accounting for static pages in first sitemap)
+  const dynamicOffset = id === 0 ? 0 : offset - 16; // 16 static pages
+
+  // Fetch all active products with pagination
   const products = await payload.find({
     collection: "products",
     where: { status: { equals: "active" } },
-    limit: 1000,
+    limit: remainingSpace,
+    page: Math.floor(dynamicOffset / remainingSpace) + 1,
     select: { slug: true, updatedAt: true },
   });
 
   const productPages: MetadataRoute.Sitemap = products.docs.map((product) => ({
-    url: `${SITE_URL}/products/${product.slug}`,
+    url: generateCanonicalUrl(`/products/${product.slug}`),
     lastModified: new Date(product.updatedAt),
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
+    changeFrequency: getChangeFrequency("product"),
+    priority: getPriority("product"),
   }));
 
   // Fetch all active categories
   const categories = await payload.find({
     collection: "categories",
     where: { status: { equals: "active" } },
-    limit: 100,
+    limit: 1000,
     select: { slug: true, updatedAt: true },
   });
 
   const categoryPages: MetadataRoute.Sitemap = categories.docs.map((category) => ({
-    url: `${SITE_URL}/categories/${category.slug}`,
+    url: generateCanonicalUrl(`/categories/${category.slug}`),
     lastModified: new Date(category.updatedAt),
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
+    changeFrequency: getChangeFrequency("category"),
+    priority: getPriority("category"),
   }));
 
   // Fetch all active subcategories
   const subcategories = await payload.find({
     collection: "subcategories",
     where: { status: { equals: "active" } },
-    limit: 500,
+    limit: 5000,
     select: { slug: true, updatedAt: true },
   });
 
   const subcategoryPages: MetadataRoute.Sitemap = subcategories.docs.map((subcategory) => ({
-    url: `${SITE_URL}/subcategories/${subcategory.slug}`,
+    url: generateCanonicalUrl(`/subcategories/${subcategory.slug}`),
     lastModified: new Date(subcategory.updatedAt),
-    changeFrequency: "weekly" as const,
+    changeFrequency: getChangeFrequency("category"),
     priority: 0.6,
   }));
 
@@ -125,33 +237,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const bundles = await payload.find({
     collection: "bundles",
     where: { status: { equals: "active" } },
-    limit: 100,
+    limit: 1000,
     select: { slug: true, updatedAt: true },
   });
 
   const bundlePages: MetadataRoute.Sitemap = bundles.docs.map((bundle) => ({
-    url: `${SITE_URL}/bundles/${bundle.slug}`,
+    url: generateCanonicalUrl(`/bundles/${bundle.slug}`),
     lastModified: new Date(bundle.updatedAt),
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
+    changeFrequency: getChangeFrequency("bundle"),
+    priority: getPriority("bundle"),
   }));
 
   // Fetch all published blog posts
   const posts = await payload.find({
     collection: "posts",
     where: { status: { equals: "published" } },
-    limit: 500,
+    limit: 5000,
     select: { slug: true, updatedAt: true },
   });
 
   const postPages: MetadataRoute.Sitemap = posts.docs.map((post) => ({
-    url: `${SITE_URL}/blog/${post.slug}`,
+    url: generateCanonicalUrl(`/blog/${post.slug}`),
     lastModified: new Date(post.updatedAt),
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
+    changeFrequency: getChangeFrequency("post"),
+    priority: getPriority("post"),
   }));
 
-  return [
+  // Combine all pages
+  const allPages = [
     ...staticPages,
     ...productPages,
     ...categoryPages,
@@ -159,4 +272,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...bundlePages,
     ...postPages,
   ];
+
+  // Log warning if sitemap exceeds limit
+  if (allPages.length > MAX_URLS_PER_SITEMAP) {
+    console.warn(
+      `Sitemap ${id} has ${allPages.length} URLs, exceeding the recommended limit of ${MAX_URLS_PER_SITEMAP}.`
+    );
+  }
+
+  return allPages;
 }

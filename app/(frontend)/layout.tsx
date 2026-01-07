@@ -4,12 +4,12 @@ import { Analytics } from "@/components/analytics";
 import { Josefin_Sans, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/shared/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { Header } from "@/components/storefront/layout";
+import { Header, MobileNavWrapper, SearchProvider } from "@/components/storefront/layout";
 import { Footer } from "@/components/shared/footer";
 import { getCategoriesForMegaMenu } from "@/lib/storefront";
 import { CartProvider } from "@/lib/cart";
-import { CartSlideOut } from "@/components/storefront/cart/CartSlideOut";
 import { baseMetadata, getOrganizationSchema, getWebsiteSchema, SITE_URL } from "@/lib/seo";
+import { CartSlideOutWrapper } from "@/components/storefront/cart/CartSlideOutWrapper";
 import "./globals.css";
 
 const josefinSans = Josefin_Sans({
@@ -67,12 +67,15 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
           disableTransitionOnChange
         >
           <CartProvider>
-            <div className="bg-background flex min-h-screen flex-col">
-              <Header categories={categories} />
-              <main className="flex-1">{children}</main>
-              <Footer />
-            </div>
-            <CartSlideOut />
+            <SearchProvider>
+              <div className="bg-background flex min-h-screen flex-col">
+                <Header categories={categories} />
+                <main className="flex-1 pb-16 lg:pb-0">{children}</main>
+                <Footer />
+              </div>
+              <CartSlideOutWrapper />
+              <MobileNavWrapper categories={categories} />
+            </SearchProvider>
           </CartProvider>
         </ThemeProvider>
         <Toaster />

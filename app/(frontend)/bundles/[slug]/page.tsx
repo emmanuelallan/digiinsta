@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { getPayload } from "payload";
+import config from "@payload-config";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   PackageIcon,
@@ -25,6 +27,29 @@ import {
 import { RichText } from "@/components/storefront/shared";
 import { BundleActions } from "@/components/storefront/bundle/BundleActions";
 import { getBundleSchema, getBreadcrumbSchema, SITE_URL, SITE_NAME } from "@/lib/seo";
+
+// ISR revalidation: 1 hour for bundle pages
+export const revalidate = 3600;
+
+/**
+ * Generate static params for all active bundles
+ * Pre-renders bundle pages at build time for better performance
+ */
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  const payload = await getPayload({ config });
+
+  const result = await payload.find({
+    collection: "bundles",
+    where: { status: { equals: "active" } },
+    limit: 100,
+    depth: 0,
+    select: { slug: true },
+  });
+
+  return result.docs.map((bundle) => ({
+    slug: bundle.slug,
+  }));
+}
 
 // Feature badges for bundles
 const bundleFeatures = [
