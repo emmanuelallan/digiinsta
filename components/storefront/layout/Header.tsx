@@ -33,124 +33,64 @@ function useIsClient() {
   );
 }
 
-type HeaderMode = "full" | "compact" | "hidden";
-
-// Hook to track scroll and determine header mode with debouncing to prevent jitter
-function useHeaderMode(): HeaderMode {
-  const [mode, setMode] = useState<HeaderMode>("full");
+// Hook: returns whether compact header should be visible
+// Shows when scrolling up AND not at top, hides otherwise
+function useCompactHeaderVisible(): boolean {
+  const [showCompact, setShowCompact] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const lastScrollY = useRef(0);
-  const lastMode = useRef<HeaderMode>("full");
-  const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
+  const ticking = useRef(false);
 
   useEffect(() => {
-    const scrollThreshold = 50; // Minimum scroll delta to trigger change
-    const topThreshold = 150; // Show full header when within this range of top
-    const debounceMs = 50; // Debounce time to prevent rapid mode changes
-
-    const updateMode = () => {
-      const scrollY = window.scrollY;
-      const scrollDelta = scrollY - lastScrollY.current;
-
-      let newMode: HeaderMode = lastMode.current;
-
-      // At top - always show full header
-      if (scrollY < topThreshold) {
-        newMode = "full";
-      }
-      // Scrolling down significantly - hide header
-      else if (scrollDelta > scrollThreshold) {
-        newMode = "hidden";
-      }
-      // Scrolling up significantly - show compact header
-      else if (scrollDelta < -scrollThreshold) {
-        newMode = "compact";
-      }
-
-      // Only update if mode actually changed
-      if (newMode !== lastMode.current) {
-        lastMode.current = newMode;
-        setMode(newMode);
-      }
-
-      lastScrollY.current = Math.max(0, scrollY);
-    };
-
-    const onScroll = () => {
-      // Clear any pending timeout
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
-
-      // Debounce the mode update
-      scrollTimeout.current = setTimeout(updateMode, debounceMs);
-    };
-
-    window.addEventListener("scroll", onScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
-    };
+    setIsMounted(true);
   }, []);
 
-  return mode;
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const updateHeader = () => {
+      const currentScrollY = window.scrollY;
+
+      // At top - hide compact header (original is visible)
+      if (currentScrollY <= 100) {
+        setShowCompact(false);
+      }
+      // Scrolling up while not at top - show compact header
+      else if (currentScrollY < lastScrollY.current) {
+        setShowCompact(true);
+      }
+      // Scrolling down - hide compact header
+      else if (currentScrollY > lastScrollY.current) {
+        setShowCompact(false);
+      }
+
+      lastScrollY.current = currentScrollY;
+      ticking.current = false;
+    };
+
+    const handleScroll = () => {
+      if (!ticking.current) {
+        requestAnimationFrame(updateHeader);
+        ticking.current = true;
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [isMounted]);
+
+  return showCompact;
 }
 
 export function Header({ categories }: HeaderProps) {
   const isClient = useIsClient();
-  const mode = useHeaderMode();
+  const showCompactHeader = useCompactHeaderVisible();
 
   return (
-    <header
-      className={cn(
-        "border-border bg-background/95 supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b backdrop-blur",
-        "transition-transform duration-200 ease-in-out will-change-transform",
-        mode === "hidden" && "-translate-y-full"
-      )}
-    >
-      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        {/* Compact Header (shown when scrolling up, not at top) - Desktop only */}
-        <div
-          className={cn(
-            "hidden items-center justify-between gap-4 lg:flex",
-            "transition-[height,opacity] duration-200 ease-in-out",
-            mode === "compact" ? "h-16 opacity-100" : "pointer-events-none h-0 opacity-0"
-          )}
-        >
-          {/* Logo */}
-          <Link href="/" className="flex items-center">
-            <Image
-              src="/logos/logo-line.svg"
-              alt="DigiInsta"
-              width={70}
-              height={38}
-              className="h-[38px] w-auto"
-              priority
-            />
-          </Link>
-
-          {/* Navigation */}
-          <div className="flex flex-1 justify-center">
-            {isClient ? <MegaMenu categories={categories} /> : <div className="h-10" />}
-          </div>
-
-          {/* Right Section */}
-          <div className="flex items-center gap-2">
-            {isClient ? <SearchBar /> : <div className="h-10 w-60" />}
-            <ThemeToggle />
-            <CartButton />
-          </div>
-        </div>
-
-        {/* Full Header (shown at top or on mobile) */}
-        <div
-          className={cn(
-            "transition-[height,opacity] duration-200 ease-in-out",
-            mode === "compact" && "lg:pointer-events-none lg:h-0 lg:opacity-0"
-          )}
-        >
+    <>
+      {/* Original Full Header - NOT sticky, stays at top of page */}
+      <header className="border-border bg-background w-full border-b">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Top Row: Logo + Search + Icons */}
           <div className="flex h-24 items-center justify-between gap-4">
             {/* Mobile Nav + Logo */}
@@ -194,7 +134,59 @@ export function Header({ categories }: HeaderProps) {
             {isClient ? <MegaMenu categories={categories} /> : <div className="h-10" />}
           </div>
         </div>
+      </header>
+
+      {/* Compact Sticky Header - slides in when scrolling up */}
+      <div
+        className={cn(
+          "border-border bg-background/95 supports-[backdrop-filter]:bg-background/60 fixed top-0 right-0 left-0 z-50 border-b backdrop-blur",
+          "transition-transform duration-200 ease-out",
+          isClient && showCompactHeader ? "translate-y-0" : "-translate-y-full"
+        )}
+      >
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 items-center justify-between gap-4">
+            {/* Mobile Nav + Logo */}
+            <div className="flex items-center gap-2">
+              {isClient ? (
+                <MobileNav categories={categories} />
+              ) : (
+                <div className="h-11 min-h-[44px] w-11 min-w-[44px] lg:hidden" />
+              )}
+              <Link href="/" className="flex items-center">
+                <Image
+                  src="/logos/logo-line.svg"
+                  alt="DigiInsta"
+                  width={70}
+                  height={38}
+                  className="h-[38px] w-auto"
+                />
+              </Link>
+            </div>
+
+            {/* Center: Navigation (desktop only) */}
+            <div className="hidden flex-1 justify-center lg:flex">
+              {isClient ? <MegaMenu categories={categories} /> : null}
+            </div>
+
+            {/* Right Section */}
+            <div className="flex items-center gap-2 lg:gap-3">
+              {/* Search - hidden on mobile */}
+              <div className="hidden lg:block">
+                {isClient ? <SearchBar /> : <div className="h-10 w-48" />}
+              </div>
+
+              {/* Theme Toggle */}
+              <ThemeToggle />
+
+              {/* Cart - hidden on mobile */}
+              <div className="hidden lg:block">
+                <CartButton />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
-    </header>
+    </>
   );
 }
