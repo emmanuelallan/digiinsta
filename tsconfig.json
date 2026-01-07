@@ -56,5 +56,15 @@
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", ".next", "out", "build", "dist", "migrations"]
+  "exclude": [
+    "node_modules",
+    ".next",
+    "out",
+    "build",
+    "dist",
+    "migrations",
+    "vitest.config.ts",
+    "__tests__",
+    "__tests__search"
+  ]
 }
