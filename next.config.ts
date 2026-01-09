@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       // Increase body size limit for file uploads (default is 1MB)
-      bodySizeLimit: "50mb",
+      bodySizeLimit: "100mb",
     },
   },
   // Allow images from R2 custom domain
