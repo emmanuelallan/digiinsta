@@ -28,8 +28,10 @@ import { UnderlineFeatureClient as UnderlineFeatureClient_e70f5e05f09f93e00b997e
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { DashboardNavLink as DashboardNavLink_c03aaae3744ec9373de833f35e0ef449 } from '../../../components/admin/Dashboard/DashboardNavLink'
+import { UploadNavLink as UploadNavLink_931ff76a32d613a071d5aa990d7b9bfe } from '../../../components/admin/Upload/UploadNavLink'
 import { S3ClientUploadHandler as S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24 } from '@payloadcms/storage-s3/client'
 import { DashboardView as DashboardView_8fd0c273eff8354fb205dea5e26c301c } from '../../../components/admin/Dashboard/DashboardView'
+import { MediaUploadView as MediaUploadView_9e64732ce1542a48d6c0d69ef21ae7fa } from '../../../components/admin/Upload/MediaUploadView'
 import { CollectionCards as CollectionCards_ab83ff7e88da8d3530831f296ec4756a } from '@payloadcms/ui/rsc'
 
 export const importMap = {
@@ -63,7 +65,9 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "/components/admin/Dashboard/DashboardNavLink#DashboardNavLink": DashboardNavLink_c03aaae3744ec9373de833f35e0ef449,
+  "/components/admin/Upload/UploadNavLink#UploadNavLink": UploadNavLink_931ff76a32d613a071d5aa990d7b9bfe,
   "@payloadcms/storage-s3/client#S3ClientUploadHandler": S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24,
   "/components/admin/Dashboard/DashboardView#DashboardView": DashboardView_8fd0c273eff8354fb205dea5e26c301c,
+  "/components/admin/Upload/MediaUploadView#MediaUploadView": MediaUploadView_9e64732ce1542a48d6c0d69ef21ae7fa,
   "@payloadcms/ui/rsc#CollectionCards": CollectionCards_ab83ff7e88da8d3530831f296ec4756a
 }

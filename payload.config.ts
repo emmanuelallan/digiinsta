@@ -38,8 +38,16 @@ export default buildConfig({
           Component: "/components/admin/Dashboard/DashboardView#DashboardView",
           path: "/dashboard",
         },
+        // Custom upload view for direct R2 uploads (bypasses Vercel timeout)
+        customUpload: {
+          Component: "/components/admin/Upload/MediaUploadView#MediaUploadView",
+          path: "/upload",
+        },
       },
-      afterNavLinks: ["/components/admin/Dashboard/DashboardNavLink#DashboardNavLink"],
+      afterNavLinks: [
+        "/components/admin/Dashboard/DashboardNavLink#DashboardNavLink",
+        "/components/admin/Upload/UploadNavLink#UploadNavLink",
+      ],
     },
   },
   collections: [
