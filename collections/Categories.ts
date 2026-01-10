@@ -1,4 +1,8 @@
 import type { CollectionConfig, Access } from "payload";
+import {
+  createRevalidationAfterChangeHook,
+  createRevalidationAfterDeleteHook,
+} from "@/lib/revalidation/hooks";
 
 /**
  * Check if user is an admin
@@ -40,6 +44,8 @@ export const Categories: CollectionConfig = {
         return data;
       },
     ],
+    afterChange: [createRevalidationAfterChangeHook("categories")],
+    afterDelete: [createRevalidationAfterDeleteHook("categories")],
   },
   fields: [
     {
@@ -115,6 +121,17 @@ export const Categories: CollectionConfig = {
       ],
       defaultValue: "active",
       required: true,
+    },
+    // Manual cache refresh button (Requirement 4.3)
+    {
+      name: "refreshCache",
+      type: "ui",
+      admin: {
+        position: "sidebar",
+        components: {
+          Field: "/components/admin/Revalidation/RefreshCacheButton#RefreshCacheButton",
+        },
+      },
     },
   ],
   timestamps: true,

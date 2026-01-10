@@ -41,7 +41,7 @@ export const viewport: Viewport = {
   maximumScale: 5,
 };
 
-export default async function RootLayout(props: { children: React.ReactNode }) {
+export default async function FrontendLayout(props: { children: React.ReactNode }) {
   const { children } = props;
 
   // Fetch categories for mega menu
@@ -77,22 +77,22 @@ export default async function RootLayout(props: { children: React.ReactNode }) {
               <MobileNavWrapper categories={categories} />
             </SearchProvider>
           </CartProvider>
+          <Toaster />
+          <Analytics />
+          {/* JSON-LD structured data */}
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(organizationSchema),
+            }}
+          />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{
+              __html: JSON.stringify(websiteSchema),
+            }}
+          />
         </ThemeProvider>
-        <Toaster />
-        <Analytics />
-        {/* JSON-LD structured data - placed in body to avoid hydration mismatch */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organizationSchema),
-          }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(websiteSchema),
-          }}
-        />
       </body>
     </html>
   );

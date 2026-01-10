@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { unstable_cache } from "next/cache";
 import {
   getProductBySlug,
   getRelatedProducts,
@@ -27,8 +28,9 @@ import {
 } from "@/components/ui/breadcrumb";
 import { RichText, TrustSignals } from "@/components/storefront/shared";
 import { getProductSchema, getBreadcrumbSchema, SITE_URL, SITE_NAME } from "@/lib/seo";
+import { COLLECTION_TAGS } from "@/lib/revalidation/tags";
 
-// ISR revalidation: 1 hour for product pages
+// ISR revalidation: 1 hour for product pages (fallback)
 export const revalidate = 3600;
 
 /**
@@ -79,9 +81,61 @@ interface ProductPageProps {
   params: Promise<{ slug: string }>;
 }
 
+/**
+ * Cached product data fetching with tag-based invalidation
+ * Tags include: product slug and collection tags for on-demand revalidation
+ * Validates: Requirements 2.1, 2.3
+ */
+const getCachedProduct = (slug: string) =>
+  unstable_cache(
+    async () => {
+      const product = await getProductBySlug(slug);
+      return product;
+    },
+    [`product-${slug}`],
+    {
+      revalidate: 3600, // 1 hour fallback
+      tags: [`product:${slug}`, COLLECTION_TAGS.allProducts],
+    }
+  )();
+
+/**
+ * Cached related products fetching with subcategory tag
+ */
+const getCachedRelatedProducts = (
+  productId: number,
+  subcategoryId: number,
+  subcategorySlug: string
+) =>
+  unstable_cache(
+    async () => {
+      return getRelatedProducts(productId, subcategoryId, 4);
+    },
+    [`related-products-${productId}`],
+    {
+      revalidate: 3600,
+      tags: [`subcategory:${subcategorySlug}`, COLLECTION_TAGS.allProducts],
+    }
+  )();
+
+/**
+ * Cached frequently bought together products
+ */
+const getCachedFrequentlyBoughtTogether = (productId: number) =>
+  unstable_cache(
+    async () => {
+      return getFrequentlyBoughtTogether(productId, 3);
+    },
+    [`fbt-${productId}`],
+    {
+      revalidate: 3600,
+      tags: [COLLECTION_TAGS.allProducts],
+    }
+  )();
+
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const product = await getCachedProduct(slug);
 
   if (!product) {
     return {
@@ -90,10 +144,10 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
   }
 
   const imageUrl = product.images?.[0]?.image?.url;
-  const price = product.price ? `$${(product.price / 100).toFixed(2)}` : "";
+  const price = product.price ? `${(product.price / 100).toFixed(2)}` : "";
   const description =
-    product.shortDescription ||
-    `Get ${product.title} at ${SITE_NAME}. ${product.subcategory?.category?.title || "Premium digital product"} designed for productivity.`;
+    product.shortDescription ??
+    `Get ${product.title} at ${SITE_NAME}. ${product.subcategory?.category?.title ?? "Premium digital product"} designed for productivity.`;
 
   return {
     title: product.title,
@@ -105,8 +159,8 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
       "digital download",
       "template",
       "planner",
-      ...((product.tags?.map((t) => t.tag).filter(Boolean) as string[]) || []),
-    ].filter(Boolean),
+      ...(product.tags?.map((t) => t.tag).filter((tag): tag is string => Boolean(tag)) ?? []),
+    ].filter((keyword): keyword is string => Boolean(keyword)),
     alternates: {
       canonical: `${SITE_URL}/products/${slug}`,
     },
@@ -137,17 +191,21 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
+  const product = await getCachedProduct(slug);
 
   if (!product) {
     notFound();
   }
 
-  // Get related products from the same subcategory
-  const relatedProducts = await getRelatedProducts(product.id, product.subcategory.id, 4);
+  // Get related products from the same subcategory (with cache tags)
+  const relatedProducts = await getCachedRelatedProducts(
+    product.id,
+    product.subcategory.id,
+    product.subcategory.slug
+  );
 
-  // Get frequently bought together products
-  const frequentlyBoughtTogether = await getFrequentlyBoughtTogether(product.id, 3);
+  // Get frequently bought together products (with cache tags)
+  const frequentlyBoughtTogether = await getCachedFrequentlyBoughtTogether(product.id);
 
   // Structured data
   const productSchema = getProductSchema({

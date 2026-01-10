@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getPayload } from "payload";
 import config from "@payload-config";
+import { unstable_cache } from "next/cache";
 import {
   getCategoryBySlug,
   getProductsGroupedBySubcategory,
@@ -21,8 +22,9 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { getCategorySchema, getBreadcrumbSchema, SITE_URL, SITE_NAME } from "@/lib/seo";
+import { COLLECTION_TAGS } from "@/lib/revalidation/tags";
 
-// ISR revalidation: 24 hours for category pages
+// ISR revalidation: 24 hours for category pages (fallback)
 export const revalidate = 86400;
 
 /**
@@ -48,6 +50,54 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
 }
+
+/**
+ * Cached category data fetching with tag-based invalidation
+ * Tags include: category slug for on-demand revalidation
+ * Validates: Requirements 2.2
+ */
+const getCachedCategory = (slug: string) =>
+  unstable_cache(
+    async () => {
+      const category = await getCategoryBySlug(slug);
+      return category;
+    },
+    [`category-${slug}`],
+    {
+      revalidate: 86400, // 24 hour fallback
+      tags: [`category:${slug}`, COLLECTION_TAGS.allCategories],
+    }
+  )();
+
+/**
+ * Cached products grouped by subcategory with category tag
+ */
+const getCachedProductsGroupedBySubcategory = (categorySlug: string) =>
+  unstable_cache(
+    async () => {
+      return getProductsGroupedBySubcategory(categorySlug, 12);
+    },
+    [`products-by-subcategory-${categorySlug}`],
+    {
+      revalidate: 86400,
+      tags: [`category:${categorySlug}`, COLLECTION_TAGS.allProducts],
+    }
+  )();
+
+/**
+ * Cached related categories
+ */
+const getCachedRelatedCategories = (categoryId: number) =>
+  unstable_cache(
+    async () => {
+      return getRelatedCategories(categoryId, 4);
+    },
+    [`related-categories-${categoryId}`],
+    {
+      revalidate: 86400,
+      tags: [COLLECTION_TAGS.allCategories],
+    }
+  )();
 
 // Feature badges data
 const featureBadges = [
@@ -75,7 +125,7 @@ const featureBadges = [
 
 export async function generateMetadata({ params }: CategoryPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const category = await getCategoryBySlug(slug);
+  const category = await getCachedCategory(slug);
 
   if (!category) {
     return {
@@ -114,16 +164,17 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const { slug } = await params;
-  const category = await getCategoryBySlug(slug);
+  const category = await getCachedCategory(slug);
 
   if (!category) {
     notFound();
   }
 
-  const groupedProducts = await getProductsGroupedBySubcategory(slug, 12);
+  // Get products grouped by subcategory (with cache tags)
+  const groupedProducts = await getCachedProductsGroupedBySubcategory(slug);
 
-  // Get related categories for internal linking
-  const relatedCategoriesData = await getRelatedCategories(category.id, 4);
+  // Get related categories for internal linking (with cache tags)
+  const relatedCategoriesData = await getCachedRelatedCategories(category.id);
 
   // Calculate total product count
   const totalProducts = groupedProducts.reduce((sum, group) => sum + group.totalProducts, 0);

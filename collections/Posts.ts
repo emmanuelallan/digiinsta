@@ -1,4 +1,8 @@
 import type { CollectionConfig, Access } from "payload";
+import {
+  createRevalidationAfterChangeHook,
+  createRevalidationAfterDeleteHook,
+} from "@/lib/revalidation/hooks";
 
 /**
  * Check if user is an admin
@@ -11,14 +15,7 @@ export const Posts: CollectionConfig = {
   slug: "posts",
   admin: {
     useAsTitle: "title",
-    defaultColumns: [
-      "title",
-      "slug",
-      "category",
-      "status",
-      "createdBy",
-      "createdAt",
-    ],
+    defaultColumns: ["title", "slug", "category", "status", "createdBy", "createdAt"],
   },
   access: {
     read: () => true,
@@ -45,6 +42,8 @@ export const Posts: CollectionConfig = {
         return data;
       },
     ],
+    afterChange: [createRevalidationAfterChangeHook("posts")],
+    afterDelete: [createRevalidationAfterDeleteHook("posts")],
   },
   fields: [
     {
@@ -107,6 +106,17 @@ export const Posts: CollectionConfig = {
       ],
       defaultValue: "draft",
       required: true,
+    },
+    // Manual cache refresh button (Requirement 4.3)
+    {
+      name: "refreshCache",
+      type: "ui",
+      admin: {
+        position: "sidebar",
+        components: {
+          Field: "/components/admin/Revalidation/RefreshCacheButton#RefreshCacheButton",
+        },
+      },
     },
   ],
   timestamps: true,

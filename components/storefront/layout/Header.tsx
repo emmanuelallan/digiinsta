@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import dynamic from "next/dynamic";
@@ -16,7 +16,6 @@ import type { MegaMenuCategory } from "@/types/storefront";
  * Validates: Requirements 5.1, 5.3
  */
 const SearchBar = dynamic(() => import("./SearchBar").then((mod) => mod.SearchBar), {
-  ssr: false,
   loading: () => <div className="bg-muted h-10 w-60 animate-pulse rounded-md" />,
 });
 
@@ -24,44 +23,26 @@ interface HeaderProps {
   categories: MegaMenuCategory[];
 }
 
-// Hook to detect if we're on the client (prevents hydration mismatch)
-function useIsClient() {
-  return useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  );
-}
-
-// Hook: returns whether compact header should be visible
-// Shows when scrolling up AND not at top, hides otherwise
-function useCompactHeaderVisible(): boolean {
-  const [showCompact, setShowCompact] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+export function Header({ categories }: HeaderProps) {
+  const [showCompactHeader, setShowCompactHeader] = useState(false);
   const lastScrollY = useRef(0);
   const ticking = useRef(false);
 
   useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!isMounted) return;
-
     const updateHeader = () => {
       const currentScrollY = window.scrollY;
 
       // At top - hide compact header (original is visible)
       if (currentScrollY <= 100) {
-        setShowCompact(false);
+        setShowCompactHeader(false);
       }
       // Scrolling up while not at top - show compact header
       else if (currentScrollY < lastScrollY.current) {
-        setShowCompact(true);
+        setShowCompactHeader(true);
       }
       // Scrolling down - hide compact header
       else if (currentScrollY > lastScrollY.current) {
-        setShowCompact(false);
+        setShowCompactHeader(false);
       }
 
       lastScrollY.current = currentScrollY;
@@ -77,14 +58,7 @@ function useCompactHeaderVisible(): boolean {
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [isMounted]);
-
-  return showCompact;
-}
-
-export function Header({ categories }: HeaderProps) {
-  const isClient = useIsClient();
-  const showCompactHeader = useCompactHeaderVisible();
+  }, []);
 
   return (
     <>
@@ -95,11 +69,9 @@ export function Header({ categories }: HeaderProps) {
           <div className="flex h-24 items-center justify-between gap-4">
             {/* Mobile Nav + Logo */}
             <div className="flex items-center gap-2">
-              {isClient ? (
+              <div className="lg:hidden">
                 <MobileNav categories={categories} />
-              ) : (
-                <div className="h-11 min-h-[44px] w-11 min-w-[44px] lg:hidden" />
-              )}
+              </div>
               <Link href="/" className="flex items-center">
                 <Image
                   src="/logos/logo-line.svg"
@@ -116,7 +88,7 @@ export function Header({ categories }: HeaderProps) {
             <div className="flex items-center gap-2 lg:gap-3">
               {/* Search - hidden on mobile, shown on desktop */}
               <div className="hidden lg:block">
-                {isClient ? <SearchBar /> : <div className="h-10 w-60" />}
+                <SearchBar />
               </div>
 
               {/* Theme Toggle */}
@@ -131,28 +103,27 @@ export function Header({ categories }: HeaderProps) {
 
           {/* Bottom Row: Desktop Navigation */}
           <div className="border-border/50 hidden h-12 items-center justify-center border-t lg:flex">
-            {isClient ? <MegaMenu categories={categories} /> : <div className="h-10" />}
+            <MegaMenu categories={categories} />
           </div>
         </div>
       </header>
 
-      {/* Compact Sticky Header - slides in when scrolling up */}
+      {/* Compact Sticky Header - always rendered but hidden off-screen initially */}
       <div
+        suppressHydrationWarning
         className={cn(
           "border-border bg-background/95 supports-[backdrop-filter]:bg-background/60 fixed top-0 right-0 left-0 z-50 border-b backdrop-blur",
           "transition-transform duration-200 ease-out",
-          isClient && showCompactHeader ? "translate-y-0" : "-translate-y-full"
+          showCompactHeader ? "translate-y-0" : "-translate-y-full"
         )}
       >
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between gap-4">
             {/* Mobile Nav + Logo */}
             <div className="flex items-center gap-2">
-              {isClient ? (
+              <div className="lg:hidden">
                 <MobileNav categories={categories} />
-              ) : (
-                <div className="h-11 min-h-[44px] w-11 min-w-[44px] lg:hidden" />
-              )}
+              </div>
               <Link href="/" className="flex items-center">
                 <Image
                   src="/logos/logo-line.svg"
@@ -166,14 +137,14 @@ export function Header({ categories }: HeaderProps) {
 
             {/* Center: Navigation (desktop only) */}
             <div className="hidden flex-1 justify-center lg:flex">
-              {isClient ? <MegaMenu categories={categories} /> : null}
+              <MegaMenu categories={categories} />
             </div>
 
             {/* Right Section */}
             <div className="flex items-center gap-2 lg:gap-3">
               {/* Search - hidden on mobile */}
               <div className="hidden lg:block">
-                {isClient ? <SearchBar /> : <div className="h-10 w-48" />}
+                <SearchBar />
               </div>
 
               {/* Theme Toggle */}

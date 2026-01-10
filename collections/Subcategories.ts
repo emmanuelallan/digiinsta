@@ -1,4 +1,8 @@
 import type { CollectionConfig, Access } from "payload";
+import {
+  createRevalidationAfterChangeHook,
+  createRevalidationAfterDeleteHook,
+} from "@/lib/revalidation/hooks";
 
 /**
  * Check if user is an admin
@@ -40,6 +44,8 @@ export const Subcategories: CollectionConfig = {
         return data;
       },
     ],
+    afterChange: [createRevalidationAfterChangeHook("subcategories")],
+    afterDelete: [createRevalidationAfterDeleteHook("subcategories")],
   },
   fields: [
     {
@@ -47,8 +53,7 @@ export const Subcategories: CollectionConfig = {
       type: "text",
       required: true,
       admin: {
-        description:
-          "Subcategory name (e.g., Study Planners, Budget Templates)",
+        description: "Subcategory name (e.g., Study Planners, Budget Templates)",
       },
     },
     {
@@ -85,6 +90,17 @@ export const Subcategories: CollectionConfig = {
       ],
       defaultValue: "active",
       required: true,
+    },
+    // Manual cache refresh button (Requirement 4.3)
+    {
+      name: "refreshCache",
+      type: "ui",
+      admin: {
+        position: "sidebar",
+        components: {
+          Field: "/components/admin/Revalidation/RefreshCacheButton#RefreshCacheButton",
+        },
+      },
     },
   ],
   timestamps: true,
