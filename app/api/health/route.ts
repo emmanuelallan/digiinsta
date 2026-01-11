@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { getPayload } from "payload";
-import config from "@payload-config";
+import { sql } from "@/lib/db/client";
+import { sanityClient } from "@/lib/sanity/client";
 
 interface HealthStatus {
   status: "healthy" | "unhealthy" | "degraded";
   timestamp: string;
   checks: {
     database: "ok" | "error";
-    payload: "ok" | "error";
+    sanity: "ok" | "error";
   };
   version: string;
   uptime: number;
@@ -17,25 +17,22 @@ const startTime = Date.now();
 
 /**
  * Health check endpoint for monitoring
- * Returns system health status including database connectivity
+ * Returns system health status including database and Sanity connectivity
  */
 export async function GET() {
   const checks = {
     database: "error" as "ok" | "error",
-    payload: "error" as "ok" | "error",
+    sanity: "error" as "ok" | "error",
   };
 
   try {
-    // Check Payload CMS and database connectivity
-    const payload = await getPayload({ config });
-    checks.payload = "ok";
-
-    // Simple query to verify database connection
-    await payload.find({
-      collection: "users",
-      limit: 1,
-    });
+    // Check Neon database connectivity
+    await sql`SELECT 1`;
     checks.database = "ok";
+
+    // Check Sanity connectivity
+    await sanityClient.fetch(`*[_type == "siteSettings"][0]{ _id }`);
+    checks.sanity = "ok";
 
     const allHealthy = Object.values(checks).every((c) => c === "ok");
 

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 import {
   Carousel,
   CarouselContent,
@@ -13,50 +14,207 @@ import {
 } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import type { StorefrontCategory } from "@/types/storefront";
+import type { HeroSlide } from "@/lib/storefront/hero";
 
 interface HeroSectionProps {
   categories: StorefrontCategory[];
+  heroSlides?: HeroSlide[];
 }
 
-export function HeroSection({ categories }: HeroSectionProps) {
-  const [api, setApi] = useState<CarouselApi>();
-  const [current, setCurrent] = useState(0);
-  const [count, setCount] = useState(0);
+export function HeroSection({ categories, heroSlides = [] }: HeroSectionProps) {
+  const [heroApi, setHeroApi] = useState<CarouselApi>();
+  const [categoryApi, setCategoryApi] = useState<CarouselApi>();
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [heroCount, setHeroCount] = useState(0);
+  const [categoryIndex, setCategoryIndex] = useState(0);
+  const [categoryCount, setCategoryCount] = useState(0);
 
+  // Hero carousel state
   useEffect(() => {
-    if (!api) return;
+    if (!heroApi) return;
 
-    setCount(api.scrollSnapList().length);
-    setCurrent(api.selectedScrollSnap());
+    setHeroCount(heroApi.scrollSnapList().length);
+    setHeroIndex(heroApi.selectedScrollSnap());
 
-    api.on("select", () => {
-      setCurrent(api.selectedScrollSnap());
+    heroApi.on("select", () => {
+      setHeroIndex(heroApi.selectedScrollSnap());
     });
-  }, [api]);
+  }, [heroApi]);
 
-  const scrollTo = useCallback(
+  // Category carousel state
+  useEffect(() => {
+    if (!categoryApi) return;
+
+    setCategoryCount(categoryApi.scrollSnapList().length);
+    setCategoryIndex(categoryApi.selectedScrollSnap());
+
+    categoryApi.on("select", () => {
+      setCategoryIndex(categoryApi.selectedScrollSnap());
+    });
+  }, [categoryApi]);
+
+  const scrollHeroTo = useCallback(
     (index: number) => {
-      api?.scrollTo(index);
+      heroApi?.scrollTo(index);
     },
-    [api]
+    [heroApi]
   );
+
+  const scrollCategoryTo = useCallback(
+    (index: number) => {
+      categoryApi?.scrollTo(index);
+    },
+    [categoryApi]
+  );
+
+  // Auto-advance hero slides
+  useEffect(() => {
+    if (!heroApi || heroSlides.length <= 1) return;
+
+    const interval = setInterval(() => {
+      const nextIndex = (heroApi.selectedScrollSnap() + 1) % heroSlides.length;
+      heroApi.scrollTo(nextIndex);
+    }, 6000); // 6 seconds per slide
+
+    return () => clearInterval(interval);
+  }, [heroApi, heroSlides.length]);
 
   return (
     <div className="bg-background">
-      {/* Hero Section */}
-      <section className="bg-background relative overflow-hidden py-6 sm:py-8 lg:py-10">
-        <div className="relative mx-auto max-w-7xl space-y-6 px-4 sm:space-y-8 sm:px-6 lg:px-8">
-          <Link href="#">
-            <Image
-              src="/images/bgs/hero.webp"
-              height={250}
-              width={1400}
-              alt="hero image"
-              className="h-auto w-full rounded-lg"
-            />
-          </Link>
-        </div>
-      </section>
+      {/* Hero Carousel Section */}
+      {heroSlides.length > 0 ? (
+        <section className="relative overflow-hidden">
+          <Carousel
+            setApi={setHeroApi}
+            opts={{
+              loop: true,
+              align: "start",
+            }}
+            className="w-full"
+          >
+            <CarouselContent>
+              {heroSlides.map((slide) => (
+                <CarouselItem key={slide.id} className="relative">
+                  <div className="relative h-[400px] w-full sm:h-[500px] lg:h-[600px]">
+                    {/* Background Image */}
+                    <Image
+                      src={slide.image.url}
+                      alt={slide.image.alt}
+                      fill
+                      priority
+                      className="object-cover"
+                      sizes="100vw"
+                    />
+
+                    {/* Overlay */}
+                    <div
+                      className="absolute inset-0 bg-black"
+                      style={{ opacity: slide.overlayOpacity / 100 }}
+                    />
+
+                    {/* Content */}
+                    <div
+                      className={cn(
+                        "absolute inset-0 flex items-center",
+                        slide.textPosition === "left" && "justify-start",
+                        slide.textPosition === "center" && "justify-center text-center",
+                        slide.textPosition === "right" && "justify-end"
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "max-w-2xl px-6 sm:px-12 lg:px-16",
+                          slide.textPosition === "center" && "mx-auto"
+                        )}
+                      >
+                        <h1
+                          className={cn(
+                            "mb-4 text-3xl leading-tight font-bold sm:text-4xl lg:text-5xl xl:text-6xl",
+                            slide.textColor === "white" ? "text-white" : "text-gray-900"
+                          )}
+                        >
+                          {slide.headline}
+                        </h1>
+                        {slide.subheadline && (
+                          <p
+                            className={cn(
+                              "mb-6 max-w-xl text-base sm:mb-8 sm:text-lg lg:text-xl",
+                              slide.textColor === "white" ? "text-white/90" : "text-gray-700"
+                            )}
+                          >
+                            {slide.subheadline}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-3 sm:gap-4">
+                          {slide.primaryCta && (
+                            <Button asChild size="lg" className="px-6 text-base sm:px-8 sm:text-lg">
+                              <Link href={slide.primaryCta.href}>{slide.primaryCta.label}</Link>
+                            </Button>
+                          )}
+                          {slide.secondaryCta && (
+                            <Button
+                              asChild
+                              variant="outline"
+                              size="lg"
+                              className={cn(
+                                "px-6 text-base sm:px-8 sm:text-lg",
+                                slide.textColor === "white" &&
+                                  "border-white text-white hover:bg-white/10"
+                              )}
+                            >
+                              <Link href={slide.secondaryCta.href}>{slide.secondaryCta.label}</Link>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+
+            {/* Navigation Buttons - Desktop only */}
+            {heroSlides.length > 1 && (
+              <>
+                <CarouselPrevious className="left-4 hidden h-10 w-10 border-white/30 bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 sm:flex sm:h-12 sm:w-12" />
+                <CarouselNext className="right-4 hidden h-10 w-10 border-white/30 bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 sm:flex sm:h-12 sm:w-12" />
+              </>
+            )}
+          </Carousel>
+
+          {/* Dot indicators */}
+          {heroCount > 1 && (
+            <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-2">
+              {Array.from({ length: heroCount }).map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => scrollHeroTo(index)}
+                  className={cn(
+                    "h-2 rounded-full transition-all duration-200",
+                    heroIndex === index ? "w-8 bg-white" : "w-2 bg-white/50 hover:bg-white/70"
+                  )}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (
+        /* Fallback static hero */
+        <section className="bg-background relative overflow-hidden py-6 sm:py-8 lg:py-10">
+          <div className="relative mx-auto max-w-7xl space-y-6 px-4 sm:space-y-8 sm:px-6 lg:px-8">
+            <Link href="/categories">
+              <Image
+                src="/images/bgs/hero.webp"
+                height={250}
+                width={1400}
+                alt="hero image"
+                className="h-auto w-full rounded-lg"
+              />
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Categories Carousel Section */}
       {categories.length > 0 && (
@@ -73,7 +231,7 @@ export function HeroSection({ categories }: HeroSectionProps) {
             </div>
 
             <Carousel
-              setApi={setApi}
+              setApi={setCategoryApi}
               opts={{
                 loop: true,
                 align: "start",
@@ -84,21 +242,24 @@ export function HeroSection({ categories }: HeroSectionProps) {
               <CarouselContent className="-ml-3 sm:-ml-4 lg:-ml-6">
                 {categories.map((category) => {
                   const imageUrl =
-                    typeof category.image === "object" && category.image?.url
-                      ? category.image.url
+                    typeof category.image === "object" && category.image?.asset
+                      ? category.image.asset._ref
                       : null;
 
                   return (
                     <CarouselItem
-                      key={category.id}
+                      key={category._id}
                       className="basis-[85%] pl-3 sm:basis-1/2 sm:pl-4 md:basis-1/3 lg:basis-1/4 lg:pl-6"
                     >
-                      <Link href={`/categories/${category.slug}`} className="group block">
+                      <Link
+                        href={`/categories/${category.slug?.current || category.slug}`}
+                        className="group block"
+                      >
                         <div className="relative aspect-[3/4] overflow-hidden rounded-xl">
                           {/* Background Image */}
                           {imageUrl ? (
                             <Image
-                              src={imageUrl}
+                              src={`https://cdn.sanity.io/images/${process.env.NEXT_PUBLIC_SANITY_PROJECT_ID}/${process.env.NEXT_PUBLIC_SANITY_DATASET}/${imageUrl.replace("image-", "").replace("-webp", ".webp").replace("-jpg", ".jpg").replace("-png", ".png")}`}
                               alt={category.title}
                               fill
                               className="object-cover transition-transform duration-500 group-hover:scale-105"
@@ -134,15 +295,15 @@ export function HeroSection({ categories }: HeroSectionProps) {
             </Carousel>
 
             {/* Dot indicators - Mobile only */}
-            {count > 1 && (
+            {categoryCount > 1 && (
               <div className="mt-4 flex items-center justify-center gap-1.5 sm:hidden">
-                {Array.from({ length: count }).map((_, index) => (
+                {Array.from({ length: categoryCount }).map((_, index) => (
                   <button
                     key={index}
-                    onClick={() => scrollTo(index)}
+                    onClick={() => scrollCategoryTo(index)}
                     className={cn(
                       "h-2 rounded-full transition-all duration-200",
-                      current === index
+                      categoryIndex === index
                         ? "bg-primary w-6"
                         : "bg-muted-foreground/30 hover:bg-muted-foreground/50 w-2"
                     )}

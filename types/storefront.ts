@@ -1,79 +1,184 @@
 /**
  * Storefront Type Definitions
- * Types for the customer-facing storefront components
+ *
+ * Types for the customer-facing storefront components.
+ * Updated to use Sanity types instead of Payload CMS.
+ *
+ * Requirements: 3.1, 6.5, 11.1-11.5 - Storefront types with Sanity integration
  */
 
-import type { Product, Category, Subcategory, Bundle, Media } from "@/payload-types";
+import type {
+  SanityCategory,
+  SanitySubcategory,
+  SanitySubcategoryExpanded,
+  SanityProduct,
+  SanityProductExpanded,
+  SanityBundle,
+  SanityBundleExpanded,
+  SanityCreator,
+  SanityTargetGroup,
+  SanityTargetGroupExpanded,
+  SanityPost,
+  SanityPostExpanded,
+  SanityPostCategory,
+  SanityHeroSlide,
+  SanitySiteSettings,
+  SanityImage,
+  SanitySlug,
+  ProductListItem,
+  BundleListItem,
+  PostListItem,
+} from "./sanity";
 
-// Re-export Payload types for convenience
-export type { Product, Category, Subcategory, Bundle, Media };
+import type { PriceResult } from "@/lib/pricing/resolver";
+
+// Re-export Sanity types for convenience
+export type {
+  SanityCategory,
+  SanitySubcategory,
+  SanitySubcategoryExpanded,
+  SanityProduct,
+  SanityProductExpanded,
+  SanityBundle,
+  SanityBundleExpanded,
+  SanityCreator,
+  SanityTargetGroup,
+  SanityTargetGroupExpanded,
+  SanityPost,
+  SanityPostExpanded,
+  SanityPostCategory,
+  SanityHeroSlide,
+  SanitySiteSettings,
+  SanityImage,
+  SanitySlug,
+  ProductListItem,
+  BundleListItem,
+  PostListItem,
+};
+
+// ============================================================================
+// Resolved Price Types
+// ============================================================================
+
+export type { PriceResult };
 
 /**
- * Subcategory with populated category
+ * Product with resolved price information
+ * Includes computed properties for component compatibility
  */
-export interface StorefrontSubcategory extends Omit<Subcategory, "category"> {
-  category: StorefrontCategory;
+export interface StorefrontProduct extends Omit<ProductListItem, "slug"> {
+  resolvedPrice: PriceResult;
+  // Computed properties for component compatibility
+  id: string; // Alias for _id
+  slug: string; // Flattened from slug.current
+  price: number; // Resolved price in cents
+  createdAt: string; // Alias for _createdAt
 }
 
 /**
- * Product with populated relations for storefront display
+ * Full product detail with all expanded references and resolved price
+ * Includes computed properties for component compatibility
  */
-export interface StorefrontProduct extends Omit<
-  Product,
-  "subcategory" | "images" | "file" | "price" | "compareAtPrice"
-> {
-  subcategory: StorefrontSubcategory;
-  images?: Array<{
-    image: Media;
-    alt?: string | null;
-    id?: string | null;
-  }> | null;
-  file: Media;
-  // Price fields (from Payload, but made optional for display flexibility)
-  price?: number;
-  compareAtPrice?: number | null;
+export interface StorefrontProductDetail extends SanityProductExpanded {
+  resolvedPrice: PriceResult;
+  // Computed properties for component compatibility
+  id?: string; // Alias for _id
+  price?: number; // Resolved price in cents
+  createdAt?: string; // Alias for _createdAt
 }
+
+/**
+ * Full product detail with all expanded references and resolved price
+ */
+export interface StorefrontProductDetail extends SanityProductExpanded {
+  resolvedPrice: PriceResult;
+}
+
+/**
+ * Bundle with resolved price information
+ */
+export interface StorefrontBundle extends BundleListItem {
+  resolvedPrice: PriceResult;
+  products?: StorefrontProductDetail[];
+  // Computed properties for component compatibility
+  id?: string; // Alias for _id
+}
+
+/**
+ * Full bundle detail with expanded products and resolved price
+ */
+export interface StorefrontBundleDetail extends Omit<SanityBundleExpanded, "products"> {
+  products: StorefrontProductDetail[];
+  resolvedPrice: PriceResult;
+}
+
+// ============================================================================
+// Category Types
+// ============================================================================
 
 /**
  * Category with subcategories and computed fields
  */
-export interface StorefrontCategory extends Omit<Category, "image"> {
-  subcategories?: StorefrontSubcategory[];
+export interface StorefrontCategory extends SanityCategory {
+  subcategories?: SanitySubcategory[];
   productCount?: number;
-  image?: Media | null;
+  // Computed alias for _id
+  id?: string;
 }
 
 /**
- * Bundle with populated products for storefront display
+ * Subcategory with category and product count
  */
-export interface StorefrontBundle extends Omit<
-  Bundle,
-  "products" | "heroImage" | "price" | "compareAtPrice"
-> {
+export interface StorefrontSubcategory extends SanitySubcategoryExpanded {
+  productCount?: number;
+}
+
+// ============================================================================
+// Discovery Types
+// ============================================================================
+
+/**
+ * New arrivals response
+ */
+export interface NewArrivalsResult {
   products: StorefrontProduct[];
-  heroImage?: Media | null;
-  // Price fields (from Payload, but made optional for display flexibility)
-  price?: number;
-  compareAtPrice?: number | null;
-  // Computed fields
-  savings?: number;
-  savingsPercentage?: number;
+  total: number;
 }
 
 /**
- * Persona definition for "Shop by Persona" section
+ * Best sellers response
  */
-export interface Persona {
-  id: string;
-  title: string;
-  slug: string;
-  description: string;
-  tagline: string;
-  iconName: string;
-  image: string;
-  gradient: string;
-  categories: string[];
+export interface BestSellersResult {
+  products: StorefrontProduct[];
+  total: number;
 }
+
+/**
+ * On sale products response
+ */
+export interface OnSaleResult {
+  products: StorefrontProduct[];
+  bundles: StorefrontBundle[];
+  total: number;
+}
+
+/**
+ * Related products response
+ */
+export interface RelatedProductsResult {
+  products: StorefrontProduct[];
+}
+
+/**
+ * Frequently bought together response
+ */
+export interface FrequentlyBoughtTogetherResult {
+  products: StorefrontProduct[];
+}
+
+// ============================================================================
+// Search Types
+// ============================================================================
 
 /**
  * Search result types
@@ -86,6 +191,60 @@ export interface SearchResult {
 }
 
 /**
+ * Search filters
+ */
+export interface SearchFilters {
+  query?: string;
+  categorySlug?: string;
+  subcategorySlug?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  tags?: string[];
+  targetGroupSlug?: string;
+  onSale?: boolean;
+  sortBy?: "newest" | "price-asc" | "price-desc" | "popular";
+}
+
+// ============================================================================
+// Pagination Types
+// ============================================================================
+
+/**
+ * Pagination parameters
+ */
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * Paginated response
+ */
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasMore: boolean;
+}
+
+// ============================================================================
+// Target Group / Persona Types
+// ============================================================================
+
+/**
+ * Persona definition for "Shop by Persona" section
+ */
+export interface Persona extends SanityTargetGroupExpanded {
+  productCount?: number;
+}
+
+// ============================================================================
+// UI Component Types
+// ============================================================================
+
+/**
  * Product card display variant
  */
 export type ProductCardVariant = "default" | "compact" | "featured" | "horizontal";
@@ -93,7 +252,12 @@ export type ProductCardVariant = "default" | "compact" | "featured" | "horizonta
 /**
  * Product tray/section types
  */
-export type ProductTrayType = "new-arrivals" | "editors-pick" | "best-sellers" | "related";
+export type ProductTrayType =
+  | "new-arrivals"
+  | "editors-pick"
+  | "best-sellers"
+  | "related"
+  | "on-sale";
 
 /**
  * Navigation menu item
@@ -125,12 +289,12 @@ export interface MegaMenuCategory {
 }
 
 /**
- * Hero section configuration
+ * Hero section configuration (from Sanity HeroSlide)
  */
 export interface HeroConfig {
   headline: string;
-  subheadline: string;
-  primaryCta: {
+  subheadline?: string;
+  primaryCta?: {
     label: string;
     href: string;
   };
@@ -138,8 +302,11 @@ export interface HeroConfig {
     label: string;
     href: string;
   };
-  backgroundImage?: string;
-  backgroundVideo?: string;
+  backgroundImage?: SanityImage;
+  mobileImage?: SanityImage;
+  textPosition?: "left" | "center" | "right";
+  textColor?: "white" | "black";
+  overlayOpacity?: number;
 }
 
 /**
@@ -151,8 +318,8 @@ export interface BundleBannerConfig {
   savings: string;
   ctaLabel: string;
   ctaHref: string;
-  backgroundImage?: string;
-  bundle?: StorefrontBundle;
+  backgroundImage?: SanityImage;
+  bundle?: StorefrontBundleDetail;
 }
 
 /**
@@ -163,23 +330,111 @@ export interface CategoryCardData {
   title: string;
   slug: string;
   description?: string;
-  icon: string;
+  icon?: string;
   productCount: number;
-  image?: string;
-  gradient: string;
+  image?: SanityImage;
+  gradient?: string;
+}
+
+// ============================================================================
+// Blog Types
+// ============================================================================
+
+/**
+ * Blog post for storefront display
+ */
+export type StorefrontPost = PostListItem;
+
+/**
+ * Full blog post detail
+ */
+export type StorefrontPostDetail = SanityPostExpanded;
+
+/**
+ * Blog category with post count
+ */
+export interface StorefrontPostCategory extends SanityPostCategory {
+  postCount?: number;
+}
+
+// ============================================================================
+// Cart Types
+// ============================================================================
+
+/**
+ * Cart item (product or bundle)
+ */
+export interface CartItem {
+  id: string;
+  type: "product" | "bundle";
+  title: string;
+  slug: string;
+  price: number;
+  compareAtPrice?: number;
+  image?: SanityImage;
+  polarProductId: string;
+  quantity: number;
 }
 
 /**
- * Predefined personas for the storefront
+ * Cart state
  */
-export const PERSONAS: Persona[] = [
+export interface CartState {
+  items: CartItem[];
+  total: number;
+  itemCount: number;
+}
+
+// ============================================================================
+// Order Types (for customer-facing order history)
+// ============================================================================
+
+/**
+ * Order item for display
+ */
+export interface OrderItem {
+  id: number;
+  type: "product" | "bundle";
+  sanityId: string;
+  title: string;
+  price: number;
+  fileKey?: string;
+  maxDownloads: number;
+  downloadsUsed: number;
+  canDownload: boolean;
+}
+
+/**
+ * Order for display
+ */
+export interface Order {
+  id: number;
+  polarOrderId: string;
+  email: string;
+  status: string;
+  totalAmount: number;
+  currency: string;
+  fulfilled: boolean;
+  createdAt: string;
+  items: OrderItem[];
+}
+
+// ============================================================================
+// Fallback Data (for when Sanity data is unavailable)
+// ============================================================================
+
+/**
+ * Predefined personas for the storefront
+ * These are fallback values - actual data should come from Sanity TargetGroups
+ */
+export const PERSONAS = [
   {
     id: "student",
     title: "The Student",
     slug: "student",
     description: "Academic success tools for ambitious learners",
     tagline: "Ace your studies",
-    iconName: "GraduationCap",
+    icon: "GraduationCap",
     image: "/images/personas/student.jpg",
     gradient: "from-blue-500 to-indigo-600",
     categories: ["academic-bio-med", "work-flow"],
@@ -190,7 +445,7 @@ export const PERSONAS: Persona[] = [
     slug: "professional",
     description: "Wealth & efficiency tools for career growth",
     tagline: "Level up your career",
-    iconName: "Briefcase",
+    icon: "Briefcase",
     image: "/images/personas/professional.jpg",
     gradient: "from-emerald-500 to-teal-600",
     categories: ["wealth-finance", "work-flow"],
@@ -201,16 +456,16 @@ export const PERSONAS: Persona[] = [
     slug: "couple",
     description: "Connection & planning tools for your journey together",
     tagline: "Build your future",
-    iconName: "Heart",
+    icon: "Heart",
     image: "/images/personas/couple.jpg",
     gradient: "from-rose-500 to-pink-600",
     categories: ["life-legacy", "wealth-finance"],
   },
-];
+] as const;
 
 /**
  * Main category definitions with icons and gradients
- * These are fallback values - actual data comes from the database
+ * These are fallback values - actual data comes from Sanity
  */
 export const MAIN_CATEGORIES: CategoryCardData[] = [
   {

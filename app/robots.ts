@@ -1,15 +1,15 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/seo";
+import { SITE_URL } from "@/lib/seo/jsonld";
 
 /**
  * Robots.txt configuration for search engine crawlers
- * Validates: Requirements 9.5
+ * Validates: Requirements 9.1
  *
  * Features:
  * - Crawl-delay to prevent server overload
  * - Sitemap reference for efficient crawling
  * - Specific rules for different bot types
- * - Protected paths for admin, API, and checkout
+ * - Protected paths for admin, API, checkout, and studio
  */
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -22,6 +22,7 @@ export default function robots(): MetadataRoute.Robots {
           "/admin/",
           "/api/",
           "/checkout/",
+          "/studio/", // Sanity Studio
           "/_next/",
           "/private/",
           "/auth/",
@@ -34,13 +35,13 @@ export default function robots(): MetadataRoute.Robots {
         // Googlebot-specific rules (Google ignores crawl-delay)
         userAgent: "Googlebot",
         allow: "/",
-        disallow: ["/admin/", "/api/", "/checkout/", "/_next/", "/private/", "/auth/"],
+        disallow: ["/admin/", "/api/", "/checkout/", "/studio/", "/_next/", "/private/", "/auth/"],
       },
       {
         // Bingbot with crawl-delay consideration
         userAgent: "Bingbot",
         allow: "/",
-        disallow: ["/admin/", "/api/", "/checkout/", "/_next/", "/private/", "/auth/"],
+        disallow: ["/admin/", "/api/", "/checkout/", "/studio/", "/_next/", "/private/", "/auth/"],
       },
       {
         // Block AI training bots

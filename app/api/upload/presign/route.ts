@@ -9,15 +9,14 @@
  * 1. Client requests presigned URL with filename and content type
  * 2. Server generates short-lived presigned URL (valid for 10 minutes)
  * 3. Client uploads directly to R2 using the presigned URL
- * 4. Client notifies server to create Payload media record
+ * 4. Client notifies server to create media record
  */
 
 import { NextResponse } from "next/server";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { r2Client, R2_BUCKET_NAME } from "@/lib/storage";
-import { getPayload } from "payload";
-import config from "@payload-config";
+import { validateAdminSession } from "@/lib/auth/validate-admin";
 
 // Allowed MIME types for upload
 const ALLOWED_MIME_TYPES = [
@@ -52,10 +51,9 @@ function generateUniqueFilename(originalFilename: string): string {
 export async function POST(request: Request) {
   try {
     // Check authentication - only admins can upload
-    const payload = await getPayload({ config });
-    const { user } = await payload.auth({ headers: request.headers });
+    const session = await validateAdminSession();
 
-    if (!user || user.role !== "admin") {
+    if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

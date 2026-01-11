@@ -42,7 +42,7 @@ export interface SitemapEntry {
  */
 export function validateSitemapEntry(entry: SitemapEntry): boolean {
   // URL must be a valid absolute URL
-  if (!entry.url || !entry.url.startsWith("http")) return false;
+  if (!entry.url?.startsWith("http")) return false;
 
   // lastModified must be a valid Date
   if (!(entry.lastModified instanceof Date) || isNaN(entry.lastModified.getTime())) return false;

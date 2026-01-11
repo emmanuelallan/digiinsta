@@ -5,13 +5,13 @@ import { StickyAddToCart } from "./StickyAddToCart";
 
 interface ProductPageClientProps {
   product: {
-    id: number;
+    id: string;
     title: string;
     price?: number;
     compareAtPrice?: number | null;
     polarProductId: string;
     images?: Array<{
-      image: { url?: string | null };
+      image?: { url?: string | null } | null;
       alt?: string | null;
     }> | null;
   };

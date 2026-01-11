@@ -152,8 +152,8 @@ export function DirectUpload({
       e.stopPropagation();
       setDragActive(false);
 
-      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-        uploadFile(e.dataTransfer.files[0]);
+      if (e.dataTransfer.files?.[0]) {
+        void uploadFile(e.dataTransfer.files[0]);
       }
     },
     [uploadFile]
@@ -161,8 +161,8 @@ export function DirectUpload({
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.files && e.target.files[0]) {
-        uploadFile(e.target.files[0]);
+      if (e.target.files?.[0]) {
+        void uploadFile(e.target.files[0]);
       }
     },
     [uploadFile]

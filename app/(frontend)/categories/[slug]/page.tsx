@@ -2,13 +2,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { getPayload } from "payload";
-import config from "@payload-config";
 import { unstable_cache } from "next/cache";
 import {
   getCategoryBySlug,
   getProductsGroupedBySubcategory,
   getRelatedCategories,
+  getCategories,
 } from "@/lib/storefront";
 import { ProductGrid } from "@/components/storefront/product";
 import { NoProductsFound, RelatedCategories } from "@/components/storefront/shared";
@@ -21,7 +20,8 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { getCategorySchema, getBreadcrumbSchema, SITE_URL, SITE_NAME } from "@/lib/seo";
+import { generateCategoryJsonLd, generateBreadcrumbJsonLd, SITE_URL } from "@/lib/seo/jsonld";
+import { generateCategoryMeta } from "@/lib/seo/meta";
 import { COLLECTION_TAGS } from "@/lib/revalidation/tags";
 
 // ISR revalidation: 24 hours for category pages (fallback)
@@ -32,18 +32,9 @@ export const revalidate = 86400;
  * Pre-renders category pages at build time for better performance
  */
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
-  const payload = await getPayload({ config });
-
-  const result = await payload.find({
-    collection: "categories",
-    where: { status: { equals: "active" } },
-    limit: 100,
-    depth: 0,
-    select: { slug: true },
-  });
-
-  return result.docs.map((category) => ({
-    slug: category.slug,
+  const categories = await getCategories();
+  return categories.map((category) => ({
+    slug: category.slug.current,
   }));
 }
 
@@ -54,7 +45,7 @@ interface CategoryPageProps {
 /**
  * Cached category data fetching with tag-based invalidation
  * Tags include: category slug for on-demand revalidation
- * Validates: Requirements 2.2
+ * Validates: Requirements 2.4
  */
 const getCachedCategory = (slug: string) =>
   unstable_cache(
@@ -87,7 +78,7 @@ const getCachedProductsGroupedBySubcategory = (categorySlug: string) =>
 /**
  * Cached related categories
  */
-const getCachedRelatedCategories = (categoryId: number) =>
+const getCachedRelatedCategories = (categoryId: string) =>
   unstable_cache(
     async () => {
       return getRelatedCategories(categoryId, 4);
@@ -133,33 +124,14 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
     };
   }
 
-  const description =
-    category.description ??
-    `Browse ${category.title} products at ${SITE_NAME}. Premium digital templates and tools.`;
-  const imageUrl = category.image?.url;
-
-  return {
+  return generateCategoryMeta({
     title: category.title,
-    description,
-    alternates: {
-      canonical: `${SITE_URL}/categories/${slug}`,
-    },
-    openGraph: {
-      title: `${category.title} | ${SITE_NAME}`,
-      description,
-      url: `${SITE_URL}/categories/${slug}`,
-      type: "website",
-      images: imageUrl
-        ? [{ url: imageUrl, width: 1200, height: 630, alt: category.title }]
-        : undefined,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: `${category.title} | ${SITE_NAME}`,
-      description,
-      images: imageUrl ? [imageUrl] : undefined,
-    },
-  };
+    slug: category.slug.current,
+    description: category.description,
+    metaTitle: category.metaTitle,
+    metaDescription: category.metaDescription,
+    image: category.image,
+  });
 }
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
@@ -174,24 +146,24 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const groupedProducts = await getCachedProductsGroupedBySubcategory(slug);
 
   // Get related categories for internal linking (with cache tags)
-  const relatedCategoriesData = await getCachedRelatedCategories(category.id);
+  const relatedCategoriesData = await getCachedRelatedCategories(category._id);
 
   // Calculate total product count
   const totalProducts = groupedProducts.reduce((sum, group) => sum + group.totalProducts, 0);
 
-  // Structured data
-  const categorySchema = getCategorySchema({
+  // Structured data - JSON-LD
+  const categorySchema = generateCategoryJsonLd({
     title: category.title,
-    slug: category.slug,
+    slug: category.slug.current,
     description: category.description,
     image: category.image,
     productCount: totalProducts,
   });
 
-  const breadcrumbSchema = getBreadcrumbSchema([
+  const breadcrumbSchema = generateBreadcrumbJsonLd([
     { name: "Home", url: SITE_URL },
     { name: "Categories", url: `${SITE_URL}/categories` },
-    { name: category.title, url: `${SITE_URL}/categories/${category.slug}` },
+    { name: category.title, url: `${SITE_URL}/categories/${category.slug.current}` },
   ]);
 
   return (
@@ -277,18 +249,13 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
             ) : (
               <div className="space-y-16">
                 {groupedProducts.map((group) => (
-                  <div key={group.subcategory.id}>
+                  <div key={group.subcategory._id}>
                     {/* Subcategory Header */}
                     <div className="mb-6 flex items-center justify-between">
                       <div>
                         <h2 className="text-foreground text-xl font-bold sm:text-2xl">
                           {group.subcategory.title}
                         </h2>
-                        {group.subcategory.description && (
-                          <p className="text-muted-foreground mt-1 text-sm">
-                            {group.subcategory.description}
-                          </p>
-                        )}
                       </div>
                       {group.totalProducts > 12 && (
                         <Link href={`/subcategories/${group.subcategory.slug}`}>

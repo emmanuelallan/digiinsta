@@ -143,7 +143,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const isInCart = useCallback(
-    (id: number, type: "product" | "bundle") => {
+    (id: string, type: "product" | "bundle") => {
       return cart.items.some((item) => {
         if (type === "bundle") {
           return item.bundleId === id && item.type === "bundle";

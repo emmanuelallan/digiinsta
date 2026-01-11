@@ -1,17 +1,37 @@
+/**
+ * Secure File Download API Route
+ *
+ * Verifies order ownership, checks download limits, and generates
+ * presigned R2 URLs for secure file downloads.
+ *
+ * Requirements: 12.2, 12.4
+ */
+
 import { type NextRequest, NextResponse } from "next/server";
-import { getPayload } from "payload";
-import config from "@payload-config";
-import { generateSignedDownloadUrl } from "@/lib/download";
+import { sql } from "@/lib/db/client";
+import { generateDownloadUrl } from "@/lib/storage/download";
+import { trackDownload, canDownload } from "@/lib/downloads/tracker";
 import { logger } from "@/lib/logger";
 
+interface OrderWithItem {
+  orderId: number;
+  orderEmail: string;
+  orderStatus: string;
+  itemId: number;
+  fileKey: string | null;
+  title: string;
+  downloadsUsed: number;
+  maxDownloads: number;
+}
+
 /**
- * Secure file download endpoint
- * Verifies ownership, expiration, and download limits
- * Generates signed R2 URL and redirects
+ * GET /api/download/[orderId]/[itemId]
+ *
+ * Downloads a purchased file. Requires email verification via query param.
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ orderId: string; itemId: string }> },
+  { params }: { params: Promise<{ orderId: string; itemId: string }> }
 ) {
   try {
     const { orderId, itemId } = await params;
@@ -20,146 +40,127 @@ export async function GET(
     if (!orderId || !itemId) {
       return NextResponse.json(
         { error: "Invalid request - missing orderId or itemId" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
-    // Validate orderId format (basic check)
-    if (orderId.length < 1 || orderId.length > 100) {
-      return NextResponse.json(
-        { error: "Invalid order ID format" },
-        { status: 400 },
-      );
+    // Parse IDs
+    const orderIdNum = parseInt(orderId, 10);
+    const itemIdNum = parseInt(itemId, 10);
+
+    if (isNaN(orderIdNum) || isNaN(itemIdNum)) {
+      return NextResponse.json({ error: "Invalid order or item ID format" }, { status: 400 });
     }
 
-    const payload = await getPayload({ config });
+    // Get email from query param (for guest checkout verification)
+    const email = request.nextUrl.searchParams.get("email");
 
-    // Get user from Payload auth or email from query (for guest checkout)
-    const { getCurrentUser } = await import("@/lib/auth/payload");
-    const user = await getCurrentUser();
-    const emailFromQuery = request.nextUrl.searchParams.get("email");
-
-    // For authenticated users, use their email
-    // For guests, require email in query
-    const email = user?.email || emailFromQuery;
     if (!email) {
       return NextResponse.json(
-        { error: "Authentication required or email must be provided" },
-        { status: 401 },
+        { error: "Email is required for download verification" },
+        { status: 401 }
       );
     }
 
-    // Fetch order
-    // Note: Type assertion needed until Payload types are generated (run dev first)
-    const orderDoc = await payload.findByID({
-      collection: "orders" as any,
-      id: orderId,
-    });
+    // Fetch order and item in a single query
+    const result = await sql`
+      SELECT 
+        o.id as order_id,
+        o.email as order_email,
+        o.status as order_status,
+        oi.id as item_id,
+        oi.file_key,
+        oi.title,
+        oi.downloads_used,
+        oi.max_downloads
+      FROM orders o
+      JOIN order_items oi ON oi.order_id = o.id
+      WHERE o.id = ${orderIdNum}
+        AND oi.id = ${itemIdNum}
+    `;
 
-    // Type assertion - Payload types will be generated after first dev run
-    const order = orderDoc as unknown as {
-      id: string;
-      email: string;
-      status: string;
-      expiresAt?: string | null;
-      items: Array<{
-        id?: string;
-        fileKey: string;
-        downloadsUsed: number;
-        maxDownloads: number;
-        title: string;
-      }>;
-    };
-
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    if (result.length === 0) {
+      return NextResponse.json({ error: "Order or item not found" }, { status: 404 });
     }
 
-    // Verify ownership
-    if (order.email.toLowerCase() !== email.toLowerCase()) {
+    const row = result[0] as {
+      order_id: number;
+      order_email: string;
+      order_status: string;
+      item_id: number;
+      file_key: string | null;
+      title: string;
+      downloads_used: number;
+      max_downloads: number;
+    };
+
+    const orderData: OrderWithItem = {
+      orderId: row.order_id,
+      orderEmail: row.order_email,
+      orderStatus: row.order_status,
+      itemId: row.item_id,
+      fileKey: row.file_key,
+      title: row.title,
+      downloadsUsed: row.downloads_used,
+      maxDownloads: row.max_downloads,
+    };
+
+    // Verify ownership (case-insensitive email comparison)
+    if (orderData.orderEmail.toLowerCase() !== email.toLowerCase()) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     // Verify order status
-    if (order.status !== "completed") {
-      return NextResponse.json(
-        { error: "Order not completed" },
-        { status: 400 },
-      );
+    if (orderData.orderStatus !== "completed") {
+      return NextResponse.json({ error: "Order not completed" }, { status: 400 });
     }
 
-    // Check expiration
-    if (order.expiresAt && new Date(order.expiresAt) < new Date()) {
-      return NextResponse.json({ error: "Order has expired" }, { status: 400 });
-    }
-
-    // Find the item by index or ID
-    // Items in Payload arrays don't have IDs, so we use index
-    const itemIndex = parseInt(itemId, 10);
-    if (isNaN(itemIndex) || itemIndex < 0 || itemIndex >= order.items.length) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
-    }
-
-    const item = order.items[itemIndex];
-
-    // Safety check (should never happen after bounds check above)
-    if (!item) {
-      return NextResponse.json({ error: "Item not found" }, { status: 404 });
+    // Check if file exists
+    if (!orderData.fileKey) {
+      return NextResponse.json({ error: "No file associated with this item" }, { status: 404 });
     }
 
     // Check download limits
-    if (item.downloadsUsed >= item.maxDownloads) {
+    const eligibility = await canDownload(itemIdNum);
+
+    if (!eligibility.canDownload) {
       return NextResponse.json(
-        { error: "Download limit exceeded" },
-        { status: 400 },
-      );
-    }
-
-    // Generate signed URL
-    const signedUrl = await generateSignedDownloadUrl(item.fileKey, 3600); // 1 hour expiry
-
-    if (!signedUrl) {
-      logger.error(
-        { orderId, itemId, fileKey: item.fileKey },
-        "Failed to generate signed URL",
-      );
-      return NextResponse.json(
-        { error: "Failed to generate download link" },
-        { status: 500 },
-      );
-    }
-
-    // Increment download counter (async, don't block)
-    payload
-      .update({
-        collection: "orders" as any,
-        id: orderId,
-        data: {
-          items: order.items.map((i, index: number) => {
-            if (index === itemIndex) {
-              return {
-                ...i,
-                downloadsUsed: (i.downloadsUsed || 0) + 1,
-              };
-            }
-            return i;
-          }),
+        {
+          error: eligibility.reason || "Download limit exceeded",
+          downloadsUsed: eligibility.downloadsUsed,
+          maxDownloads: eligibility.maxDownloads,
         },
-      })
-      .catch((error) => {
-        logger.error(
-          { error, orderId, itemId },
-          "Failed to increment download counter",
-        );
-      });
+        { status: 400 }
+      );
+    }
+
+    // Generate presigned download URL (1 hour expiration)
+    const downloadResult = await generateDownloadUrl(orderData.fileKey);
+
+    // Track the download (increment counter)
+    const trackResult = await trackDownload(itemIdNum);
 
     logger.info(
-      { orderId, itemId, email, userId: user?.id || "guest" },
-      "Download generated",
+      {
+        orderId: orderIdNum,
+        itemId: itemIdNum,
+        email,
+        fileKey: orderData.fileKey,
+        downloadsUsed: trackResult.downloadsUsed,
+        maxDownloads: trackResult.maxDownloads,
+      },
+      "Download generated"
     );
 
-    // Redirect to signed URL
-    return NextResponse.redirect(signedUrl);
+    // Return download URL and metadata
+    return NextResponse.json({
+      downloadUrl: downloadResult.presignedUrl,
+      expiresAt: downloadResult.expiresAt.toISOString(),
+      title: orderData.title,
+      downloadsUsed: trackResult.downloadsUsed,
+      maxDownloads: trackResult.maxDownloads,
+      remainingDownloads: trackResult.remainingDownloads,
+    });
   } catch (error) {
     logger.error({ error }, "Download error");
     return NextResponse.json({ error: "Download failed" }, { status: 500 });

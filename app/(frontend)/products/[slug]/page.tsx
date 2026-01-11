@@ -2,13 +2,12 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { getPayload } from "payload";
-import config from "@payload-config";
 import { unstable_cache } from "next/cache";
 import {
   getProductBySlug,
   getRelatedProducts,
   getFrequentlyBoughtTogether,
+  getProducts,
 } from "@/lib/storefront";
 import {
   ProductImageGallery,
@@ -27,8 +26,10 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { RichText, TrustSignals } from "@/components/storefront/shared";
-import { getProductSchema, getBreadcrumbSchema, SITE_URL, SITE_NAME } from "@/lib/seo";
+import { generateProductJsonLd, generateBreadcrumbJsonLd, SITE_URL } from "@/lib/seo/jsonld";
+import { generateProductMeta } from "@/lib/seo/meta";
 import { COLLECTION_TAGS } from "@/lib/revalidation/tags";
+import { urlFor } from "@/lib/sanity/image";
 
 // ISR revalidation: 1 hour for product pages (fallback)
 export const revalidate = 3600;
@@ -38,17 +39,8 @@ export const revalidate = 3600;
  * Pre-renders product pages at build time for better performance
  */
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
-  const payload = await getPayload({ config });
-
-  const result = await payload.find({
-    collection: "products",
-    where: { status: { equals: "active" } },
-    limit: 1000,
-    depth: 0,
-    select: { slug: true },
-  });
-
-  return result.docs.map((product) => ({
+  const { products } = await getProducts({ limit: 1000 });
+  return products.map((product) => ({
     slug: product.slug,
   }));
 }
@@ -84,7 +76,7 @@ interface ProductPageProps {
 /**
  * Cached product data fetching with tag-based invalidation
  * Tags include: product slug and collection tags for on-demand revalidation
- * Validates: Requirements 2.1, 2.3
+ * Validates: Requirements 3.5
  */
 const getCachedProduct = (slug: string) =>
   unstable_cache(
@@ -103,13 +95,14 @@ const getCachedProduct = (slug: string) =>
  * Cached related products fetching with subcategory tag
  */
 const getCachedRelatedProducts = (
-  productId: number,
-  subcategoryId: number,
+  productId: string,
+  subcategoryId: string,
+  tags: string[],
   subcategorySlug: string
 ) =>
   unstable_cache(
     async () => {
-      return getRelatedProducts(productId, subcategoryId, 4);
+      return getRelatedProducts(productId, subcategoryId, tags, 4);
     },
     [`related-products-${productId}`],
     {
@@ -121,7 +114,7 @@ const getCachedRelatedProducts = (
 /**
  * Cached frequently bought together products
  */
-const getCachedFrequentlyBoughtTogether = (productId: number) =>
+const getCachedFrequentlyBoughtTogether = (productId: string) =>
   unstable_cache(
     async () => {
       return getFrequentlyBoughtTogether(productId, 3);
@@ -143,50 +136,16 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     };
   }
 
-  const imageUrl = product.images?.[0]?.image?.url;
-  const price = product.price ? `${(product.price / 100).toFixed(2)}` : "";
-  const description =
-    product.shortDescription ??
-    `Get ${product.title} at ${SITE_NAME}. ${product.subcategory?.category?.title ?? "Premium digital product"} designed for productivity.`;
-
-  return {
+  return generateProductMeta({
     title: product.title,
-    description,
-    keywords: [
-      product.title,
-      product.subcategory?.title,
-      product.subcategory?.category?.title,
-      "digital download",
-      "template",
-      "planner",
-      ...(product.tags?.map((t) => t.tag).filter((tag): tag is string => Boolean(tag)) ?? []),
-    ].filter((keyword): keyword is string => Boolean(keyword)),
-    alternates: {
-      canonical: `${SITE_URL}/products/${slug}`,
-    },
-    openGraph: {
-      title: `${product.title} | ${SITE_NAME}`,
-      description,
-      url: `${SITE_URL}/products/${slug}`,
-      type: "website",
-      images: imageUrl
-        ? [
-            {
-              url: imageUrl,
-              width: 1200,
-              height: 630,
-              alt: product.title,
-            },
-          ]
-        : undefined,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title: `${product.title} ${price ? `- ${price}` : ""} | ${SITE_NAME}`,
-      description,
-      images: imageUrl ? [imageUrl] : undefined,
-    },
-  };
+    slug: product.slug.current,
+    shortDescription: product.shortDescription,
+    metaTitle: product.metaTitle,
+    metaDescription: product.metaDescription,
+    images: product.images,
+    price: product.resolvedPrice.price,
+    compareAtPrice: product.resolvedPrice.compareAtPrice,
+  });
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
@@ -199,36 +158,37 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   // Get related products from the same subcategory (with cache tags)
   const relatedProducts = await getCachedRelatedProducts(
-    product.id,
-    product.subcategory.id,
-    product.subcategory.slug
+    product._id,
+    product.subcategory._id,
+    product.tags ?? [],
+    product.subcategory.slug.current
   );
 
   // Get frequently bought together products (with cache tags)
-  const frequentlyBoughtTogether = await getCachedFrequentlyBoughtTogether(product.id);
+  const frequentlyBoughtTogether = await getCachedFrequentlyBoughtTogether(product._id);
 
-  // Structured data
-  const productSchema = getProductSchema({
+  // Structured data - JSON-LD
+  const productSchema = generateProductJsonLd({
     title: product.title,
-    slug: product.slug,
+    slug: product.slug.current,
     shortDescription: product.shortDescription,
-    price: product.price,
-    compareAtPrice: product.compareAtPrice,
     images: product.images,
-    subcategory: product.subcategory,
+    price: product.resolvedPrice.price,
+    compareAtPrice: product.resolvedPrice.compareAtPrice,
+    category: product.subcategory.category?.title,
   });
 
-  const breadcrumbSchema = getBreadcrumbSchema([
+  const breadcrumbSchema = generateBreadcrumbJsonLd([
     { name: "Home", url: SITE_URL },
     {
       name: product.subcategory.category.title,
-      url: `${SITE_URL}/categories/${product.subcategory.category.slug}`,
+      url: `${SITE_URL}/categories/${product.subcategory.category.slug.current}`,
     },
     {
       name: product.subcategory.title,
-      url: `${SITE_URL}/subcategories/${product.subcategory.slug}`,
+      url: `${SITE_URL}/subcategories/${product.subcategory.slug.current}`,
     },
-    { name: product.title, url: `${SITE_URL}/products/${product.slug}` },
+    { name: product.title, url: `${SITE_URL}/products/${product.slug.current}` },
   ]);
 
   return (
@@ -257,7 +217,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbLink asChild>
-                    <Link href={`/categories/${product.subcategory.category.slug}`}>
+                    <Link href={`/categories/${product.subcategory.category.slug.current}`}>
                       {product.subcategory.category.title}
                     </Link>
                   </BreadcrumbLink>
@@ -265,7 +225,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
                   <BreadcrumbLink asChild>
-                    <Link href={`/subcategories/${product.subcategory.slug}`}>
+                    <Link href={`/subcategories/${product.subcategory.slug.current}`}>
                       {product.subcategory.title}
                     </Link>
                   </BreadcrumbLink>
@@ -294,12 +254,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <div className="xl:col-span-2">
                 <ProductPageClient
                   product={{
-                    id: product.id,
+                    id: product._id,
                     title: product.title,
-                    price: product.price,
-                    compareAtPrice: product.compareAtPrice,
+                    price: product.resolvedPrice.price,
+                    compareAtPrice: product.resolvedPrice.compareAtPrice,
                     polarProductId: product.polarProductId,
-                    images: product.images,
+                    images: product.images?.map((img) => ({
+                      image: img ? { url: urlFor(img).width(200).url() } : null,
+                      alt: product.title,
+                    })),
                   }}
                 >
                   <div className="space-y-5 xl:sticky xl:top-24">
@@ -318,12 +281,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     {/* Price & CTA Buttons */}
                     <ProductActions
                       product={{
-                        id: product.id,
+                        id: product._id,
                         title: product.title,
-                        price: product.price,
-                        compareAtPrice: product.compareAtPrice,
+                        price: product.resolvedPrice.price,
+                        compareAtPrice: product.resolvedPrice.compareAtPrice,
                         polarProductId: product.polarProductId,
-                        images: product.images,
+                        images: product.images?.map((img) => ({
+                          image: img ? { url: urlFor(img).width(200).url() } : null,
+                          alt: product.title,
+                        })),
                       }}
                     />
 
@@ -337,13 +303,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
                           Tags
                         </p>
                         <div className="flex flex-wrap gap-2">
-                          {product.tags.map((tag) =>
-                            tag.tag ? (
-                              <Badge key={tag.id} variant="secondary" className="text-xs">
-                                {tag.tag}
-                              </Badge>
-                            ) : null
-                          )}
+                          {product.tags.map((tag, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -403,27 +367,29 @@ export default async function ProductPage({ params }: ProductPageProps) {
         )}
 
         {/* Frequently Bought Together */}
-        {frequentlyBoughtTogether.length > 0 && product.polarProductId && product.price && (
-          <section className="border-t py-10 lg:py-12">
-            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-              <FrequentlyBoughtTogether
-                sourceProduct={{
-                  id: product.id,
-                  title: product.title,
-                  price: product.price,
-                  compareAtPrice: product.compareAtPrice,
-                  polarProductId: product.polarProductId,
-                  images: product.images?.map((img) => ({
-                    image: img.image ? { url: img.image.url ?? undefined } : null,
-                    alt: img.alt,
-                  })),
-                }}
-                relatedProducts={frequentlyBoughtTogether}
-                limit={3}
-              />
-            </div>
-          </section>
-        )}
+        {frequentlyBoughtTogether.length > 0 &&
+          product.polarProductId &&
+          product.resolvedPrice.price && (
+            <section className="border-t py-10 lg:py-12">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <FrequentlyBoughtTogether
+                  sourceProduct={{
+                    id: product._id,
+                    title: product.title,
+                    price: product.resolvedPrice.price,
+                    compareAtPrice: product.resolvedPrice.compareAtPrice,
+                    polarProductId: product.polarProductId,
+                    images: product.images?.map((img) => ({
+                      image: img ? { url: urlFor(img).width(200).url() } : null,
+                      alt: product.title,
+                    })),
+                  }}
+                  relatedProducts={frequentlyBoughtTogether}
+                  limit={3}
+                />
+              </div>
+            </section>
+          )}
 
         {/* Related Products */}
         {relatedProducts.length > 0 && (

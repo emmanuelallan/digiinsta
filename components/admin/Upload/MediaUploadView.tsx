@@ -168,7 +168,7 @@ export const MediaUploadView: React.FC = () => {
       Array.from(fileList).forEach((file, index) => {
         const uploadingFile = newFiles[index];
         if (uploadingFile) {
-          uploadFile(file, uploadingFile.id);
+          void uploadFile(file, uploadingFile.id);
         }
       });
     },

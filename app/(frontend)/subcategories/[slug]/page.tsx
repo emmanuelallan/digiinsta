@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { getPayload } from "payload";
-import config from "@payload-config";
-import { getSubcategoryBySlug, getProducts } from "@/lib/storefront";
+import { getSubcategoryBySlug, getProducts, getSubcategories } from "@/lib/storefront";
 import { ProductGrid } from "@/components/storefront/product";
 import { NoProductsFound } from "@/components/storefront/shared";
 import {
@@ -24,6 +22,8 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import { generateCategoryJsonLd, generateBreadcrumbJsonLd, SITE_URL } from "@/lib/seo/jsonld";
+import { generateSubcategoryMeta } from "@/lib/seo/meta";
 
 // ISR revalidation: 24 hours for subcategory pages
 export const revalidate = 86400;
@@ -33,18 +33,9 @@ export const revalidate = 86400;
  * Pre-renders subcategory pages at build time for better performance
  */
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
-  const payload = await getPayload({ config });
-
-  const result = await payload.find({
-    collection: "subcategories",
-    where: { status: { equals: "active" } },
-    limit: 500,
-    depth: 0,
-    select: { slug: true },
-  });
-
-  return result.docs.map((subcategory) => ({
-    slug: subcategory.slug,
+  const subcategories = await getSubcategories();
+  return subcategories.map((subcategory) => ({
+    slug: subcategory.slug.current,
   }));
 }
 
@@ -89,10 +80,19 @@ export async function generateMetadata({ params }: SubcategoryPageProps): Promis
     };
   }
 
-  return {
+  return generateSubcategoryMeta({
     title: subcategory.title,
-    description: subcategory.description ?? `Browse ${subcategory.title} products at DigiInsta`,
-  };
+    slug: subcategory.slug.current,
+    description: subcategory.description,
+    metaTitle: subcategory.metaTitle,
+    metaDescription: subcategory.metaDescription,
+    category: subcategory.category
+      ? {
+          title: subcategory.category.title,
+          slug: subcategory.category.slug.current,
+        }
+      : null,
+  });
 }
 
 function generatePaginationItems(currentPage: number, totalPages: number) {
@@ -145,141 +145,175 @@ export default async function SubcategoryPage({ params, searchParams }: Subcateg
 
   const paginationItems = generatePaginationItems(currentPage, totalPages);
 
+  // Structured data - JSON-LD
+  const subcategorySchema = generateCategoryJsonLd({
+    title: subcategory.title,
+    slug: subcategory.slug.current,
+    description: subcategory.description,
+    productCount: totalDocs,
+  });
+
+  const breadcrumbSchema = generateBreadcrumbJsonLd([
+    { name: "Home", url: SITE_URL },
+    { name: "Categories", url: `${SITE_URL}/categories` },
+    {
+      name: subcategory.category.title,
+      url: `${SITE_URL}/categories/${subcategory.category.slug.current}`,
+    },
+    { name: subcategory.title, url: `${SITE_URL}/subcategories/${subcategory.slug.current}` },
+  ]);
+
   return (
-    <div className="bg-background">
-      {/* Hero Header */}
-      <section className="bg-muted/30 py-10 lg:py-14">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Breadcrumb */}
-          <Breadcrumb className="mb-6">
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link href="/">Home</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link href="/categories">Categories</Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbLink asChild>
-                  <Link href={`/categories/${subcategory.category.slug}`}>
-                    {subcategory.category.title}
-                  </Link>
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{subcategory.title}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+    <>
+      {/* JSON-LD Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(subcategorySchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
 
-          {/* Header Content */}
-          <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
-            {/* Left: Subcategory Info */}
-            <div className="max-w-xl">
-              <p className="text-primary mb-2 text-sm font-medium">{subcategory.category.title}</p>
-              <h1 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl">
-                {subcategory.title}
-              </h1>
-              {subcategory.description && (
-                <p className="text-muted-foreground mt-4 text-base">{subcategory.description}</p>
-              )}
-            </div>
+      <div className="bg-background">
+        {/* Hero Header */}
+        <section className="bg-muted/30 py-10 lg:py-14">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            {/* Breadcrumb */}
+            <Breadcrumb className="mb-6">
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link href="/">Home</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link href="/categories">Categories</Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbLink asChild>
+                    <Link href={`/categories/${subcategory.category.slug.current}`}>
+                      {subcategory.category.title}
+                    </Link>
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{subcategory.title}</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
 
-            {/* Right: Feature Badges */}
-            <div className="flex flex-wrap gap-6 lg:gap-8">
-              {featureBadges.map((badge, index) => (
-                <div key={index} className="flex min-w-[70px] flex-col items-center text-center">
-                  <div className="mb-2 h-10 w-10">
-                    <Image
-                      src={badge.icon}
-                      alt={badge.title}
-                      width={40}
-                      height={40}
-                      className="h-full w-full object-contain dark:invert"
-                    />
-                  </div>
-                  <span className="text-foreground text-xs font-semibold tracking-wide uppercase">
-                    {badge.title}
-                  </span>
-                  <span className="text-muted-foreground text-xs tracking-wide uppercase">
-                    {badge.subtitle}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Products Section */}
-      <section className="py-10 lg:py-14">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {products.length === 0 ? (
-            <NoProductsFound />
-          ) : (
-            <>
-              {/* Products Count */}
-              <div className="mb-6 flex items-center justify-between">
-                <p className="text-muted-foreground text-sm">
-                  Showing {(currentPage - 1) * PRODUCTS_PER_PAGE + 1}-
-                  {Math.min(currentPage * PRODUCTS_PER_PAGE, totalDocs)} of {totalDocs}{" "}
-                  {totalDocs === 1 ? "product" : "products"}
+            {/* Header Content */}
+            <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:justify-between">
+              {/* Left: Subcategory Info */}
+              <div className="max-w-xl">
+                <p className="text-primary mb-2 text-sm font-medium">
+                  {subcategory.category.title}
                 </p>
+                <h1 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl">
+                  {subcategory.title}
+                </h1>
+                {subcategory.description && (
+                  <p className="text-muted-foreground mt-4 text-base">{subcategory.description}</p>
+                )}
               </div>
 
-              {/* Products Grid */}
-              <ProductGrid products={products} columns={4} />
+              {/* Right: Feature Badges */}
+              <div className="flex flex-wrap gap-6 lg:gap-8">
+                {featureBadges.map((badge, index) => (
+                  <div key={index} className="flex min-w-[70px] flex-col items-center text-center">
+                    <div className="mb-2 h-10 w-10">
+                      <Image
+                        src={badge.icon}
+                        alt={badge.title}
+                        width={40}
+                        height={40}
+                        className="h-full w-full object-contain dark:invert"
+                      />
+                    </div>
+                    <span className="text-foreground text-xs font-semibold tracking-wide uppercase">
+                      {badge.title}
+                    </span>
+                    <span className="text-muted-foreground text-xs tracking-wide uppercase">
+                      {badge.subtitle}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="mt-12">
-                  <Pagination>
-                    <PaginationContent>
-                      {currentPage > 1 && (
-                        <PaginationItem>
-                          <PaginationPrevious
-                            href={`/subcategories/${slug}?page=${currentPage - 1}`}
-                          />
-                        </PaginationItem>
-                      )}
-
-                      {paginationItems.map((item, index) =>
-                        item === "ellipsis" ? (
-                          <PaginationItem key={`ellipsis-${index}`}>
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        ) : (
-                          <PaginationItem key={item}>
-                            <PaginationLink
-                              href={`/subcategories/${slug}?page=${item}`}
-                              isActive={item === currentPage}
-                            >
-                              {item}
-                            </PaginationLink>
-                          </PaginationItem>
-                        )
-                      )}
-
-                      {currentPage < totalPages && (
-                        <PaginationItem>
-                          <PaginationNext href={`/subcategories/${slug}?page=${currentPage + 1}`} />
-                        </PaginationItem>
-                      )}
-                    </PaginationContent>
-                  </Pagination>
+        {/* Products Section */}
+        <section className="py-10 lg:py-14">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            {products.length === 0 ? (
+              <NoProductsFound />
+            ) : (
+              <>
+                {/* Products Count */}
+                <div className="mb-6 flex items-center justify-between">
+                  <p className="text-muted-foreground text-sm">
+                    Showing {(currentPage - 1) * PRODUCTS_PER_PAGE + 1}-
+                    {Math.min(currentPage * PRODUCTS_PER_PAGE, totalDocs)} of {totalDocs}{" "}
+                    {totalDocs === 1 ? "product" : "products"}
+                  </p>
                 </div>
-              )}
-            </>
-          )}
-        </div>
-      </section>
-    </div>
+
+                {/* Products Grid */}
+                <ProductGrid products={products} columns={4} />
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="mt-12">
+                    <Pagination>
+                      <PaginationContent>
+                        {currentPage > 1 && (
+                          <PaginationItem>
+                            <PaginationPrevious
+                              href={`/subcategories/${slug}?page=${currentPage - 1}`}
+                            />
+                          </PaginationItem>
+                        )}
+
+                        {paginationItems.map((item, index) =>
+                          item === "ellipsis" ? (
+                            <PaginationItem key={`ellipsis-${index}`}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          ) : (
+                            <PaginationItem key={item}>
+                              <PaginationLink
+                                href={`/subcategories/${slug}?page=${item}`}
+                                isActive={item === currentPage}
+                              >
+                                {item}
+                              </PaginationLink>
+                            </PaginationItem>
+                          )
+                        )}
+
+                        {currentPage < totalPages && (
+                          <PaginationItem>
+                            <PaginationNext
+                              href={`/subcategories/${slug}?page=${currentPage + 1}`}
+                            />
+                          </PaginationItem>
+                        )}
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+      </div>
+    </>
   );
 }

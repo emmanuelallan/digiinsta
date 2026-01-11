@@ -22,13 +22,8 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { getBreadcrumbSchema, SITE_URL, SITE_NAME } from "@/lib/seo";
-import {
-  getFormattedReadingTime,
-  extractTextFromRichContent,
-  countWords,
-  formatDurationISO8601,
-} from "@/lib/blog/reading-time";
+import { getBreadcrumbSchema, getArticleSchema, SITE_URL, SITE_NAME } from "@/lib/seo";
+import { getFormattedReadingTime, extractTextFromRichContent } from "@/lib/blog/reading-time";
 import { TableOfContents, RelatedPosts } from "@/components/storefront/blog";
 import { extractHeadings } from "@/lib/blog/toc-extraction";
 
@@ -96,48 +91,26 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   // Calculate reading time
   const readingTime = getFormattedReadingTime(post.content);
   const plainTextContent = extractTextFromRichContent(post.content);
-  const wordCount = countWords(plainTextContent);
-  const readingTimeMinutes = Math.ceil(wordCount / 200);
-  const timeRequired = formatDurationISO8601(readingTimeMinutes);
 
   // Check if post has enough headings for TOC (3+ headings)
   const headings = extractHeadings(post.content);
   const showTableOfContents = headings.length >= 3;
 
-  // Enhanced Article Schema with reading time and word count
-  const articleSchema = {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    headline: post.title,
-    description: post.excerpt ?? `Read ${post.title} on the ${SITE_NAME} blog.`,
-    image: post.featuredImage?.url,
-    datePublished: post.createdAt,
-    dateModified: post.updatedAt,
-    wordCount: wordCount,
-    timeRequired: timeRequired,
-    author: {
-      "@type": "Person",
-      name: post.author.name ?? "DigiInsta Team",
-      url: `${SITE_URL}/blog`,
-    },
-    publisher: {
-      "@type": "Organization",
-      name: SITE_NAME,
-      url: SITE_URL,
-      logo: {
-        "@type": "ImageObject",
-        url: `${SITE_URL}/images/logo.png`,
-      },
-    },
-    mainEntityOfPage: {
-      "@type": "WebPage",
-      "@id": `${SITE_URL}/blog/${post.slug}`,
-    },
-    ...(post.category && {
-      articleSection: post.category.title,
-    }),
-  };
+  // Generate Article JSON-LD using centralized function
+  // Requirements: 9.3 - JSON-LD structured data for blog posts
+  const articleSchema = getArticleSchema({
+    title: post.title,
+    slug: post.slug,
+    excerpt: post.excerpt,
+    content: plainTextContent,
+    featuredImage: post.featuredImage,
+    category: post.category ? { title: post.category.title } : null,
+    createdBy: { name: post.author.name },
+    createdAt: post.publishedAt ?? post.createdAt,
+    updatedAt: post.updatedAt,
+  });
 
+  // Generate breadcrumb JSON-LD
   const breadcrumbSchema = getBreadcrumbSchema([
     { name: "Home", url: SITE_URL },
     { name: "Blog", url: `${SITE_URL}/blog` },

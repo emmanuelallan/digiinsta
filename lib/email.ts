@@ -17,14 +17,20 @@ export interface EmailOptions {
  */
 export async function sendEmail(options: EmailOptions): Promise<void> {
   try {
-    const defaultFrom = `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "notifications.digiinsta.store"}>`;
-    await resend.emails.send({
+    // Use RESEND_EMAIL_FROM if set, otherwise construct from RESEND_DOMAIN
+    const defaultFrom =
+      process.env.RESEND_EMAIL_FROM ??
+      `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "notifications.digiinsta.store"}>`;
+
+    const result = await resend.emails.send({
       from: options.from ?? defaultFrom,
       to: Array.isArray(options.to) ? options.to : [options.to],
       subject: options.subject,
       html: options.html,
       replyTo: options.replyTo,
     });
+
+    console.log("Email sent successfully:", result);
   } catch (error) {
     // Log error but don't throw - emails should never block operations
     console.error("Failed to send email:", error);
@@ -379,6 +385,37 @@ export const emailTemplates = {
       </p>
       `,
       `Welcome to DigiInsta! Thanks for subscribing to our newsletter.`
+    ),
+  }),
+
+  adminOTP: (otp: string) => ({
+    subject: `Your DigiInsta Admin Login Code: ${otp}`,
+    html: emailLayout(
+      `
+      <div style="text-align: center; margin-bottom: 32px;">
+        <div style="display: inline-block; width: 64px; height: 64px; background-color: #dbeafe; border-radius: 50%; line-height: 64px; margin-bottom: 16px;">
+          <span style="font-size: 32px;">🔐</span>
+        </div>
+        <h1 style="margin: 0 0 8px; font-size: 24px; font-weight: 700; color: #18181b;">Admin Login Code</h1>
+        <p style="margin: 0; font-size: 16px; color: #71717a;">Use this code to sign in to your admin account</p>
+      </div>
+      
+      <div style="background-color: #fafafa; border-radius: 12px; padding: 32px; margin-bottom: 24px; text-align: center;">
+        <p style="margin: 0 0 16px; font-size: 14px; color: #71717a; text-transform: uppercase; letter-spacing: 1px;">Your verification code</p>
+        <div style="font-size: 36px; font-weight: 700; color: #18181b; letter-spacing: 8px; font-family: monospace;">${otp}</div>
+      </div>
+      
+      <div style="background-color: #fef3c7; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+        <p style="margin: 0; font-size: 14px; color: #92400e;">
+          <strong>⚠️ Important:</strong> This code expires in 10 minutes. If you didn't request this code, please ignore this email.
+        </p>
+      </div>
+      
+      <p style="margin: 0; font-size: 14px; color: #71717a; text-align: center;">
+        For security, never share this code with anyone.
+      </p>
+      `,
+      `Your DigiInsta admin login code is ${otp}. It expires in 10 minutes.`
     ),
   }),
 };

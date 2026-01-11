@@ -10,44 +10,37 @@ interface BundleBannerProps {
   variant?: "full" | "compact";
 }
 
-export async function BundleBanner({
-  className,
-  variant = "full",
-}: BundleBannerProps) {
+export async function BundleBanner({ className, variant = "full" }: BundleBannerProps) {
   const bundle = await getFeaturedBundle();
 
   // If no bundle, show a generic bundles CTA
   if (!bundle) {
     return (
       <section className={className}>
-        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-primary to-primary/80 p-8 md:p-12">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="from-primary to-primary/80 relative overflow-hidden rounded-2xl bg-gradient-to-r p-8 md:p-12">
             <div className="relative z-10 max-w-xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-white text-sm font-medium mb-4">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-sm font-medium text-white">
                 <HugeiconsIcon icon={Discount01Icon} size={16} />
                 Save More with Bundles
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+              <h2 className="mb-3 text-2xl font-bold text-white md:text-3xl">
                 Bundle & Save Up to 40%
               </h2>
-              <p className="text-white/90 mb-6">
-                Get more value with our curated product bundles. Perfect
-                combinations at unbeatable prices.
+              <p className="mb-6 text-white/90">
+                Get more value with our curated product bundles. Perfect combinations at unbeatable
+                prices.
               </p>
               <Button asChild variant="secondary" size="lg">
                 <Link href="/bundles">
                   Shop Bundles
-                  <HugeiconsIcon
-                    icon={ArrowRight01Icon}
-                    size={18}
-                    className="ml-2"
-                  />
+                  <HugeiconsIcon icon={ArrowRight01Icon} size={18} className="ml-2" />
                 </Link>
               </Button>
             </div>
             {/* Decorative circles */}
-            <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-white/10" />
-            <div className="absolute -right-10 -bottom-10 w-40 h-40 rounded-full bg-white/5" />
+            <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10" />
+            <div className="absolute -right-10 -bottom-10 h-40 w-40 rounded-full bg-white/5" />
           </div>
         </div>
       </section>
@@ -57,28 +50,22 @@ export async function BundleBanner({
   if (variant === "compact") {
     return (
       <section className={className}>
-        <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <Link
             href={`/bundles/${bundle.slug}`}
-            className="group block relative overflow-hidden rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 p-6"
+            className="group relative block overflow-hidden rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 p-6"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20">
-                  <HugeiconsIcon
-                    icon={Discount01Icon}
-                    size={24}
-                    className="text-white"
-                  />
+                  <HugeiconsIcon icon={Discount01Icon} size={24} className="text-white" />
                 </div>
                 <div>
-                  <p className="text-white/90 text-sm font-medium">
-                    Featured Bundle
-                  </p>
-                  <p className="text-white font-bold">{bundle.title}</p>
+                  <p className="text-sm font-medium text-white/90">Featured Bundle</p>
+                  <p className="font-bold text-white">{bundle.title}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-white font-semibold">
+              <div className="flex items-center gap-2 font-semibold text-white">
                 <span>Shop Now</span>
                 <HugeiconsIcon
                   icon={ArrowRight01Icon}
@@ -95,40 +82,28 @@ export async function BundleBanner({
 
   return (
     <section className={className}>
-      <div className="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500">
-          <div className="grid md:grid-cols-2 gap-8 p-8 md:p-12">
+          <div className="grid gap-8 p-8 md:grid-cols-2 md:p-12">
             {/* Content */}
             <div className="relative z-10 flex flex-col justify-center">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 text-white text-sm font-medium mb-4 w-fit">
+              <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-sm font-medium text-white">
                 <HugeiconsIcon icon={Discount01Icon} size={16} />
-                Save {bundle.products.length > 2 ? "40%" : "25%"} with this
-                bundle
+                Save {(bundle.products?.length ?? 0) > 2 ? "40%" : "25%"} with this bundle
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-                {bundle.title}
-              </h2>
-              <p className="text-white/90 text-lg mb-6 line-clamp-2">
+              <h2 className="mb-3 text-3xl font-bold text-white md:text-4xl">{bundle.title}</h2>
+              <p className="mb-6 line-clamp-2 text-lg text-white/90">
                 {bundle.shortDescription ||
-                  `Get ${bundle.products.length} premium products in one bundle`}
+                  `Get ${bundle.products?.length ?? 0} premium products in one bundle`}
               </p>
               <div className="flex flex-wrap gap-4">
                 <Button asChild size="lg" variant="secondary">
                   <Link href={`/bundles/${bundle.slug}`}>
                     Get the Bundle
-                    <HugeiconsIcon
-                      icon={ArrowRight01Icon}
-                      size={18}
-                      className="ml-2"
-                    />
+                    <HugeiconsIcon icon={ArrowRight01Icon} size={18} className="ml-2" />
                   </Link>
                 </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="ghost"
-                  className="text-white hover:bg-white/20"
-                >
+                <Button asChild size="lg" variant="ghost" className="text-white hover:bg-white/20">
                   <Link href="/bundles">View All Bundles</Link>
                 </Button>
               </div>
@@ -142,7 +117,7 @@ export async function BundleBanner({
                   src={bundle.heroImage.url}
                   alt={bundle.title}
                   fill
-                  className="object-cover rounded-xl"
+                  className="rounded-xl object-cover"
                   sizes="(max-width: 768px) 100vw, 50vw"
                 />
               </div>
@@ -150,8 +125,8 @@ export async function BundleBanner({
           </div>
 
           {/* Decorative elements */}
-          <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full bg-white/10" />
-          <div className="absolute -left-10 -bottom-10 w-40 h-40 rounded-full bg-white/5" />
+          <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10" />
+          <div className="absolute -bottom-10 -left-10 h-40 w-40 rounded-full bg-white/5" />
         </div>
       </div>
     </section>

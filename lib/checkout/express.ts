@@ -22,7 +22,7 @@ export interface ExpressCheckoutConfig {
 
 export interface ExpressCheckoutItem {
   polarProductId: string;
-  productId: number;
+  productId: string;
   type: "product" | "bundle";
   title?: string;
   price?: number;

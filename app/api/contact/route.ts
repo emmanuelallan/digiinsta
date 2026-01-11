@@ -1,56 +1,42 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { getPayload } from "payload";
-import config from "@payload-config";
+import { sendEmail } from "@/lib/email";
 import { rateLimiters, getClientIp, checkRateLimit } from "@/lib/rate-limit";
 
+/**
+ * Contact form submission handler
+ * Sends email notification for contact form submissions
+ */
 export async function POST(request: NextRequest) {
-  // Rate limit: 5 requests per hour per IP
-  const ip = getClientIp(request);
-  const rateLimitResponse = await checkRateLimit(rateLimiters.contact, ip);
-  if (rateLimitResponse) return rateLimitResponse;
-
   try {
+    // Rate limiting
+    const ip = getClientIp(request);
+    const rateLimitResponse = await checkRateLimit(rateLimiters.contact, ip);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
     const body = await request.json();
-    const { name, email, phone, subject, message, source } = body;
+    const { name, email, subject, message } = body;
 
-    // Validate required fields
-    if (!name || !email || !subject || !message) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!name || !email || !message) {
+      return NextResponse.json({ error: "Name, email, and message are required" }, { status: 400 });
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "Invalid email format" }, { status: 400 });
-    }
-
-    const payload = await getPayload({ config });
-
-    // Get IP address for spam prevention
-    const ipAddress =
-      request.headers.get("x-forwarded-for")?.split(",")[0] ||
-      request.headers.get("x-real-ip") ||
-      "unknown";
-
-    // Create contact submission
-    await payload.create({
-      collection: "contact-submissions",
-      data: {
-        name,
-        email,
-        phone: phone || undefined,
-        subject,
-        message,
-        source: source || "contact-page",
-        ipAddress,
-        status: "new",
-      },
+    // Send notification email to admin
+    await sendEmail({
+      to: process.env.CONTACT_EMAIL || "support@digiinsta.store",
+      subject: `Contact Form: ${subject || "New Message"}`,
+      html: `
+        <h2>New Contact Form Submission</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Subject:</strong> ${subject || "N/A"}</p>
+        <p><strong>Message:</strong></p>
+        <p>${message}</p>
+      `,
     });
 
-    return NextResponse.json(
-      { success: true, message: "Message sent successfully" },
-      { status: 201 }
-    );
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Contact form error:", error);
     return NextResponse.json({ error: "Failed to send message" }, { status: 500 });

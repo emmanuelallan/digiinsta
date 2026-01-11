@@ -85,7 +85,7 @@ export function clearRecentSearches(): void {
  * Transform a product to a search suggestion
  */
 function productToSuggestion(product: StorefrontProduct): SearchSuggestion {
-  const firstImage = product.images?.[0]?.image;
+  const firstImage = product.images?.[0];
   return {
     type: "product",
     title: product.title,
@@ -101,7 +101,7 @@ function categoryToSuggestion(category: StorefrontCategory): SearchSuggestion {
   return {
     type: "category",
     title: category.title,
-    slug: category.slug,
+    slug: category.slug.current,
     image: category.image?.url ?? undefined,
   };
 }

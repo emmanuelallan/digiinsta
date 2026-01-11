@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 interface AddToCartButtonProps {
   item: {
     type: "product" | "bundle";
-    productId?: number;
-    bundleId?: number;
+    productId?: string;
+    bundleId?: string;
     polarProductId: string;
     title: string;
     price: number;

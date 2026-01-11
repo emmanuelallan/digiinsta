@@ -27,13 +27,13 @@ export function ProductCard({
   popularThreshold = 10,
   showSaleCountdown = true,
 }: ProductCardProps) {
-  const firstImage = product.images?.[0]?.image;
+  const firstImage = product.images?.[0];
   const imageUrl = firstImage?.url ?? "/images/placeholder-product.jpg";
-  const imageAlt = product.images?.[0]?.alt ?? product.title;
+  const imageAlt = firstImage?.alt ?? product.title;
 
   // Check for featured tag
   const isFeatured = product.tags?.some(
-    (t) => t.tag?.toLowerCase() === "featured" || t.tag?.toLowerCase() === "editors-pick"
+    (t) => t?.toLowerCase() === "featured" || t?.toLowerCase() === "editors-pick"
   );
 
   // Prepare product data for badges
@@ -168,8 +168,8 @@ export function ProductCard({
                   compareAtPrice: product.compareAtPrice,
                   polarProductId: product.polarProductId,
                   images: product.images?.map((img) => ({
-                    image: img.image ? { url: img.image.url ?? undefined } : null,
-                    alt: img.alt,
+                    image: img ? { url: img.url ?? undefined } : null,
+                    alt: img?.alt,
                   })),
                 }}
                 variant="overlay"

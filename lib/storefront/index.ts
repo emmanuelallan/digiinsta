@@ -64,7 +64,26 @@ export {
 } from "./blog";
 export type { BlogPost } from "./blog";
 
-// Recommendations utilities
+// Discovery utilities
+export {
+  getNewArrivals as getDiscoveryNewArrivals,
+  getBestSellers as getDiscoveryBestSellers,
+  getOnSale,
+  getRelatedProducts as getDiscoveryRelatedProducts,
+  getFrequentlyBoughtTogether as getDiscoveryFBT,
+  getAllTargetGroups,
+  getTargetGroupBySlug,
+} from "./discovery";
+export type {
+  NewArrivalsResult,
+  BestSellersResult,
+  OnSaleResult,
+  RelatedProductsResult,
+  FrequentlyBoughtTogetherResult,
+} from "@/types/storefront";
+export type { SanityTargetGroupExpanded } from "./discovery";
+
+// Recommendations utilities (Sanity-based)
 export {
   getFrequentlyBoughtTogether,
   getCustomersAlsoViewed,

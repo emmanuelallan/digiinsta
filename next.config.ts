@@ -1,5 +1,4 @@
 import { withSentryConfig } from "@sentry/nextjs";
-import { withPayload } from "@payloadcms/next/withPayload";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
@@ -9,12 +8,16 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "100mb",
     },
   },
-  // Allow images from R2 custom domain
+  // Allow images from R2 custom domain and Sanity CDN
   images: {
     remotePatterns: [
       {
         protocol: "https",
         hostname: "assets.digiinsta.store",
+      },
+      {
+        protocol: "https",
+        hostname: "cdn.sanity.io",
       },
     ],
   },
@@ -78,7 +81,7 @@ const nextConfig: NextConfig = {
   ],
 };
 
-export default withSentryConfig(withPayload(nextConfig), {
+export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 

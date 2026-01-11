@@ -6,16 +6,11 @@ import Zoom from "react-medium-image-zoom";
 import "react-medium-image-zoom/dist/styles.css";
 import { cn } from "@/lib/utils";
 import { OptimizedImage } from "@/components/storefront/shared";
-import type { Media } from "@/types/storefront";
+import type { SanityImage } from "@/types/sanity";
+import { urlFor } from "@/lib/sanity/image";
 
 interface ProductImageGalleryProps {
-  images?: Array<{
-    image: Media;
-    alt?: string | null;
-    id?: string | null;
-    /** Optional blur data URL for placeholder */
-    blurDataURL?: string;
-  }> | null;
+  images?: SanityImage[] | null;
   title: string;
 }
 
@@ -150,12 +145,14 @@ export function ProductImageGallery({ images, title }: ProductImageGalleryProps)
           <div className="sticky top-24 max-h-[500px] overflow-y-auto" ref={thumbRef}>
             <div className="flex flex-col gap-2">
               {images.map((img, index) => {
-                const thumbUrl = img.image?.url ?? "/images/placeholder-product.jpg";
-                const thumbAlt = img.alt ?? `${title} - Thumbnail ${index + 1}`;
+                const thumbUrl = img
+                  ? urlFor(img).width(80).height(80).url()
+                  : "/images/placeholder-product.jpg";
+                const thumbAlt = `${title} - Thumbnail ${index + 1}`;
 
                 return (
                   <button
-                    key={img.id ?? index}
+                    key={index}
                     onClick={() => onThumbClick(index)}
                     className={cn(
                       "bg-muted relative aspect-square min-h-[44px] w-full min-w-[44px] flex-shrink-0 overflow-hidden rounded-lg transition-all duration-200",
@@ -164,12 +161,7 @@ export function ProductImageGallery({ images, title }: ProductImageGalleryProps)
                         : "opacity-50 hover:opacity-100"
                     )}
                   >
-                    <OptimizedImage
-                      src={thumbUrl}
-                      alt={thumbAlt}
-                      sizes="thumbnail"
-                      blurDataURL={img.blurDataURL}
-                    />
+                    <OptimizedImage src={thumbUrl} alt={thumbAlt} sizes="thumbnail" />
                   </button>
                 );
               })}
@@ -189,13 +181,15 @@ export function ProductImageGallery({ images, title }: ProductImageGalleryProps)
         >
           <div className="flex touch-pan-x">
             {images.map((img, index) => {
-              const imageUrl = img.image?.url ?? "/images/placeholder-product.jpg";
-              const imageAlt = img.alt ?? `${title} - Image ${index + 1}`;
+              const imageUrl = img
+                ? urlFor(img).width(800).height(600).url()
+                : "/images/placeholder-product.jpg";
+              const imageAlt = `${title} - Image ${index + 1}`;
               // First image gets priority loading for LCP optimization
               const isPriority = index === 0;
 
               return (
-                <div key={img.id ?? index} className="min-w-0 flex-[0_0_100%]">
+                <div key={index} className="min-w-0 flex-[0_0_100%]">
                   <Zoom zoomMargin={40}>
                     <div className="bg-muted relative aspect-[4/3] cursor-zoom-in overflow-hidden rounded-xl">
                       <OptimizedImage
@@ -203,7 +197,6 @@ export function ProductImageGallery({ images, title }: ProductImageGalleryProps)
                         alt={imageAlt}
                         sizes="productGallery"
                         priority={isPriority}
-                        blurDataURL={img.blurDataURL}
                         className="h-full w-full"
                       />
                     </div>
@@ -252,12 +245,14 @@ export function ProductImageGallery({ images, title }: ProductImageGalleryProps)
           <div className="mt-4 xl:hidden">
             <div className="flex touch-pan-x gap-2 overflow-x-auto pb-2">
               {images.map((img, index) => {
-                const thumbUrl = img.image?.url ?? "/images/placeholder-product.jpg";
-                const thumbAlt = img.alt ?? `${title} - Thumbnail ${index + 1}`;
+                const thumbUrl = img
+                  ? urlFor(img).width(64).height(64).url()
+                  : "/images/placeholder-product.jpg";
+                const thumbAlt = `${title} - Thumbnail ${index + 1}`;
 
                 return (
                   <button
-                    key={img.id ?? index}
+                    key={index}
                     onClick={() => onThumbClick(index)}
                     className={cn(
                       "bg-muted relative h-16 min-h-[44px] w-16 min-w-[44px] flex-shrink-0 overflow-hidden rounded-lg transition-all duration-200",
@@ -266,12 +261,7 @@ export function ProductImageGallery({ images, title }: ProductImageGalleryProps)
                         : "opacity-50 hover:opacity-100"
                     )}
                   >
-                    <OptimizedImage
-                      src={thumbUrl}
-                      alt={thumbAlt}
-                      sizes="thumbnailSmall"
-                      blurDataURL={img.blurDataURL}
-                    />
+                    <OptimizedImage src={thumbUrl} alt={thumbAlt} sizes="thumbnailSmall" />
                   </button>
                 );
               })}

@@ -7,12 +7,18 @@ import {
   Briefcase01Icon,
   FavouriteIcon,
   ArrowRight02Icon,
+  UserMultiple02Icon,
+  StarIcon,
 } from "@hugeicons/core-free-icons";
 import type { IconSvgElement } from "@hugeicons/react";
-import { getProductsByPersona, getProductsByCategory } from "@/lib/storefront";
+import {
+  getProductsByPersona,
+  getProductsByCategory,
+  getTargetGroupBySlug,
+  getAllTargetGroups,
+} from "@/lib/storefront";
 import { ProductGrid } from "@/components/storefront/product";
 import { NoProductsFound } from "@/components/storefront/shared";
-import { PERSONAS, MAIN_CATEGORIES } from "@/types/storefront";
 import { Button } from "@/components/ui/button";
 import {
   Breadcrumb,
@@ -27,54 +33,88 @@ interface ShopByPersonaPageProps {
   params: Promise<{ persona: string }>;
 }
 
-const personaIcons: Record<string, IconSvgElement> = {
-  student: GraduationCap,
-  professional: Briefcase01Icon,
-  couple: FavouriteIcon,
+/**
+ * Map icon names from Sanity to actual icon components
+ */
+const iconMap: Record<string, IconSvgElement> = {
+  GraduationCap: GraduationCap,
+  Briefcase: Briefcase01Icon,
+  Heart: FavouriteIcon,
+  Users: UserMultiple02Icon,
+  Star: StarIcon,
 };
+
+/**
+ * Get icon component from icon name
+ */
+function getIconComponent(iconName?: string): IconSvgElement {
+  if (!iconName) return GraduationCap;
+  return iconMap[iconName] ?? GraduationCap;
+}
 
 export async function generateMetadata({ params }: ShopByPersonaPageProps): Promise<Metadata> {
   const { persona: personaSlug } = await params;
-  const persona = PERSONAS.find((p) => p.slug === personaSlug);
+  const targetGroup = await getTargetGroupBySlug(personaSlug);
 
-  if (!persona) {
+  if (!targetGroup) {
     return {
       title: "Shop Not Found",
     };
   }
 
   return {
-    title: `Shop for ${persona.title}`,
-    description: persona.description,
+    title: `Shop for ${targetGroup.title} | DigiInsta`,
+    description: targetGroup.description ?? `Browse products curated for ${targetGroup.title}`,
+    openGraph: {
+      title: `Shop for ${targetGroup.title}`,
+      description: targetGroup.description ?? `Browse products curated for ${targetGroup.title}`,
+    },
   };
+}
+
+/**
+ * Generate static params for all target groups
+ * Requirements: 10.3 - Shop by Persona navigation
+ */
+export async function generateStaticParams() {
+  const targetGroups = await getAllTargetGroups();
+  return targetGroups.map((tg) => ({
+    persona: tg.slug,
+  }));
 }
 
 export default async function ShopByPersonaPage({ params }: ShopByPersonaPageProps) {
   const { persona: personaSlug } = await params;
-  const persona = PERSONAS.find((p) => p.slug === personaSlug);
+  const targetGroup = await getTargetGroupBySlug(personaSlug);
 
-  if (!persona) {
+  if (!targetGroup) {
     notFound();
   }
 
-  // Get products for each category in this persona
+  // Get products for this target group (filtered by targetGroup reference)
+  // Requirements: 10.4 - Filter products by targetGroup
+  const allProducts = await getProductsByPersona(targetGroup.slug, 50);
+
+  // Get products grouped by related categories if available
   const categoryProducts = await Promise.all(
-    persona.categories.map(async (categorySlug) => {
-      const products = await getProductsByCategory(categorySlug, 4);
-      const categoryInfo = MAIN_CATEGORIES.find((c) => c.slug === categorySlug);
+    (targetGroup.relatedCategories ?? []).map(async (category) => {
+      const products = await getProductsByCategory(category.slug, 4);
       return {
-        slug: categorySlug,
-        title: categoryInfo?.title ?? categorySlug,
-        description: categoryInfo?.description,
-        gradient: categoryInfo?.gradient ?? "from-gray-500 to-gray-600",
+        slug: category.slug,
+        title: category.title,
+        description: category.description,
+        gradient: category.gradient ?? "from-gray-500 to-gray-600",
         products,
       };
     })
   );
 
-  // Get all products for this persona
-  const allProducts = await getProductsByPersona(persona.categories, 50);
-  const iconElement = personaIcons[persona.id] ?? GraduationCap;
+  // Get all other target groups for the "Try another persona" section
+  const allTargetGroups = await getAllTargetGroups();
+  const otherTargetGroups = allTargetGroups.filter((tg) => tg.slug !== targetGroup.slug);
+
+  const iconElement = getIconComponent(targetGroup.icon);
+  const gradient = targetGroup.gradient ?? "from-blue-500 to-indigo-600";
 
   return (
     <div className="bg-background min-h-screen">
@@ -96,7 +136,7 @@ export default async function ShopByPersonaPage({ params }: ShopByPersonaPagePro
               </BreadcrumbItem>
               <BreadcrumbSeparator />
               <BreadcrumbItem>
-                <BreadcrumbPage>{persona.title}</BreadcrumbPage>
+                <BreadcrumbPage>{targetGroup.title}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
@@ -104,9 +144,7 @@ export default async function ShopByPersonaPage({ params }: ShopByPersonaPagePro
       </div>
 
       {/* Hero Section */}
-      <section
-        className={`relative overflow-hidden bg-gradient-to-br ${persona.gradient} py-16 lg:py-24`}
-      >
+      <section className={`relative overflow-hidden bg-gradient-to-br ${gradient} py-16 lg:py-24`}>
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div
@@ -127,30 +165,31 @@ export default async function ShopByPersonaPage({ params }: ShopByPersonaPagePro
 
             {/* Content */}
             <div className="flex-1">
-              <p className="mb-2 text-sm font-medium tracking-wider text-white/80 uppercase">
-                {persona.tagline}
-              </p>
+              {targetGroup.tagline && (
+                <p className="mb-2 text-sm font-medium tracking-wider text-white/80 uppercase">
+                  {targetGroup.tagline}
+                </p>
+              )}
               <h1 className="text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-                {persona.title}
+                {targetGroup.title}
               </h1>
-              <p className="mt-4 max-w-2xl text-lg text-white/90 sm:text-xl">
-                {persona.description}
-              </p>
+              {targetGroup.description && (
+                <p className="mt-4 max-w-2xl text-lg text-white/90 sm:text-xl">
+                  {targetGroup.description}
+                </p>
+              )}
               <div className="mt-6 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
                 <span className="inline-flex items-center rounded-full bg-white/20 px-4 py-1.5 text-sm font-medium text-white backdrop-blur-sm">
                   {allProducts.length} products curated for you
                 </span>
-                {persona.categories.map((catSlug) => {
-                  const cat = MAIN_CATEGORIES.find((c) => c.slug === catSlug);
-                  return cat ? (
-                    <span
-                      key={catSlug}
-                      className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-sm text-white/80"
-                    >
-                      {cat.title}
-                    </span>
-                  ) : null;
-                })}
+                {targetGroup.relatedCategories?.map((cat) => (
+                  <span
+                    key={cat._id}
+                    className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-sm text-white/80"
+                  >
+                    {cat.title}
+                  </span>
+                ))}
               </div>
             </div>
           </div>
@@ -194,7 +233,7 @@ export default async function ShopByPersonaPage({ params }: ShopByPersonaPagePro
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mb-8 text-center">
               <h2 className="text-foreground text-2xl font-bold tracking-tight sm:text-3xl">
-                All Products for {persona.title}
+                All Products for {targetGroup.title}
               </h2>
               <p className="text-muted-foreground mt-2">
                 Browse our complete collection curated just for you
@@ -216,39 +255,44 @@ export default async function ShopByPersonaPage({ params }: ShopByPersonaPagePro
       )}
 
       {/* Other Personas CTA */}
-      <section className="py-12 lg:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 text-center">
-            <h2 className="text-foreground text-xl font-semibold">
-              Not quite right? Try another persona
-            </h2>
-          </div>
-          <div className="flex flex-wrap justify-center gap-4">
-            {PERSONAS.filter((p) => p.id !== persona.id).map((otherPersona) => {
-              const otherIcon = personaIcons[otherPersona.id] ?? GraduationCap;
-              return (
-                <Link
-                  key={otherPersona.id}
-                  href={`/shop/${otherPersona.slug}`}
-                  className="group bg-card hover:border-primary flex items-center gap-3 rounded-xl border px-5 py-3 transition-all hover:shadow-md"
-                >
-                  <div
-                    className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${otherPersona.gradient} text-white`}
+      {otherTargetGroups.length > 0 && (
+        <section className="py-12 lg:py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-8 text-center">
+              <h2 className="text-foreground text-xl font-semibold">
+                Not quite right? Try another persona
+              </h2>
+            </div>
+            <div className="flex flex-wrap justify-center gap-4">
+              {otherTargetGroups.map((otherPersona) => {
+                const otherIcon = getIconComponent(otherPersona.icon);
+                const otherGradient = otherPersona.gradient ?? "from-gray-500 to-gray-600";
+                return (
+                  <Link
+                    key={otherPersona._id}
+                    href={`/shop/${otherPersona.slug}`}
+                    className="group bg-card hover:border-primary flex items-center gap-3 rounded-xl border px-5 py-3 transition-all hover:shadow-md"
                   >
-                    <HugeiconsIcon icon={otherIcon} size={20} />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-foreground group-hover:text-primary font-medium transition-colors">
-                      {otherPersona.title}
-                    </p>
-                    <p className="text-muted-foreground text-xs">{otherPersona.tagline}</p>
-                  </div>
-                </Link>
-              );
-            })}
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${otherGradient} text-white`}
+                    >
+                      <HugeiconsIcon icon={otherIcon} size={20} />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-foreground group-hover:text-primary font-medium transition-colors">
+                        {otherPersona.title}
+                      </p>
+                      {otherPersona.tagline && (
+                        <p className="text-muted-foreground text-xs">{otherPersona.tagline}</p>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }

@@ -126,12 +126,18 @@ describe("Sale Countdown Property Tests", () => {
             const endDate = new Date(Date.now() + totalMs);
             const result = calculateTimeRemaining(endDate);
 
-            // Property: Calculated time should match input (within 1 second tolerance due to execution time)
-            expect(result.days).toBe(days);
-            expect(result.hours).toBe(hours);
-            expect(result.minutes).toBe(minutes);
-            // Allow 1 second tolerance for seconds due to test execution time
-            expect(Math.abs(result.seconds - seconds)).toBeLessThanOrEqual(1);
+            // Convert both to total seconds for comparison
+            // This avoids issues with minute/second boundary crossings during test execution
+            const expectedTotalSeconds =
+              days * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60 + seconds;
+            const actualTotalSeconds =
+              result.days * 24 * 60 * 60 +
+              result.hours * 60 * 60 +
+              result.minutes * 60 +
+              result.seconds;
+
+            // Property: Total time should match within 2 seconds tolerance due to test execution time
+            expect(Math.abs(actualTotalSeconds - expectedTotalSeconds)).toBeLessThanOrEqual(2);
           })
         );
       });

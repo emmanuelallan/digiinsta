@@ -13,13 +13,13 @@ import { cn } from "@/lib/utils";
 
 interface StickyAddToCartProps {
   product: {
-    id: number;
+    id: string;
     title: string;
     price: number;
     compareAtPrice?: number | null;
     polarProductId: string;
     images?: Array<{
-      image: { url?: string | null };
+      image?: { url?: string | null } | null;
       alt?: string | null;
     }> | null;
   };

@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { getPayload } from "payload";
-import config from "@payload-config";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   PackageIcon,
@@ -13,7 +11,7 @@ import {
   RefreshIcon,
   SecurityCheckIcon,
 } from "@hugeicons/core-free-icons";
-import { getBundleBySlug } from "@/lib/storefront";
+import { getBundleBySlug, getBundles } from "@/lib/storefront";
 import { ProductGrid } from "@/components/storefront/product";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -27,31 +25,19 @@ import {
 import { RichText } from "@/components/storefront/shared";
 import { BundleActions } from "@/components/storefront/bundle/BundleActions";
 import { getBundleSchema, getBreadcrumbSchema, SITE_URL, SITE_NAME } from "@/lib/seo";
+import { urlFor } from "@/lib/sanity/image";
+import type { StorefrontProduct } from "@/types/storefront";
 
 // ISR revalidation: 1 hour for bundle pages
 export const revalidate = 3600;
 
-/**
- * Generate static params for all active bundles
- * Pre-renders bundle pages at build time for better performance
- */
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
-  const payload = await getPayload({ config });
-
-  const result = await payload.find({
-    collection: "bundles",
-    where: { status: { equals: "active" } },
-    limit: 100,
-    depth: 0,
-    select: { slug: true },
-  });
-
-  return result.docs.map((bundle) => ({
-    slug: bundle.slug,
+  const { bundles } = await getBundles();
+  return bundles.map((bundle) => ({
+    slug: bundle.slug.current,
   }));
 }
 
-// Feature badges for bundles
 const bundleFeatures = [
   {
     icon: Download01Icon,
@@ -84,23 +70,21 @@ export async function generateMetadata({ params }: BundlePageProps): Promise<Met
   const bundle = await getBundleBySlug(slug);
 
   if (!bundle) {
-    return {
-      title: "Bundle Not Found",
-    };
+    return { title: "Bundle Not Found" };
   }
 
   const description =
     bundle.shortDescription ??
     `Get the ${bundle.title} bundle at ${SITE_NAME}. Save more with our curated product bundles.`;
-  const imageUrl = bundle.heroImage?.url;
-  const price = bundle.price ? `$${(bundle.price / 100).toFixed(2)}` : "";
+  const imageUrl = bundle.heroImage
+    ? urlFor(bundle.heroImage).width(1200).height(630).url()
+    : undefined;
+  const price = bundle.price ? `${(bundle.price / 100).toFixed(2)}` : "";
 
   return {
     title: `${bundle.title} | Bundle`,
     description,
-    alternates: {
-      canonical: `${SITE_URL}/bundles/${slug}`,
-    },
+    alternates: { canonical: `${SITE_URL}/bundles/${slug}` },
     openGraph: {
       title: `${bundle.title} ${price ? `- ${price}` : ""} | ${SITE_NAME}`,
       description,
@@ -127,7 +111,9 @@ export default async function BundlePage({ params }: BundlePageProps) {
     notFound();
   }
 
-  const heroImageUrl = bundle.heroImage?.url;
+  const heroImageUrl = bundle.heroImage
+    ? urlFor(bundle.heroImage).width(800).height(600).url()
+    : undefined;
   const productCount = bundle.products?.length ?? 0;
   const hasDiscount = bundle.compareAtPrice && bundle.price && bundle.compareAtPrice > bundle.price;
   const savingsAmount = hasDiscount ? bundle.compareAtPrice! - bundle.price! : 0;
@@ -135,30 +121,28 @@ export default async function BundlePage({ params }: BundlePageProps) {
     ? Math.round((savingsAmount / bundle.compareAtPrice!) * 100)
     : 0;
 
-  // Structured data
   const bundleSchema = getBundleSchema({
     title: bundle.title,
-    slug: bundle.slug,
+    slug: bundle.slug.current,
     shortDescription: bundle.shortDescription,
     price: bundle.price,
     compareAtPrice: bundle.compareAtPrice,
-    heroImage: bundle.heroImage,
+    heroImage: bundle.heroImage ? { url: heroImageUrl } : undefined,
     products: bundle.products?.map((p) => ({
       title: p.title,
-      slug: p.slug,
-      price: p.price,
+      slug: p.slug.current,
+      price: p.resolvedPrice.price,
     })),
   });
 
   const breadcrumbSchema = getBreadcrumbSchema([
     { name: "Home", url: SITE_URL },
     { name: "Bundles", url: `${SITE_URL}/bundles` },
-    { name: bundle.title, url: `${SITE_URL}/bundles/${bundle.slug}` },
+    { name: bundle.title, url: `${SITE_URL}/bundles/${bundle.slug.current}` },
   ]);
 
   return (
     <>
-      {/* JSON-LD Structured Data */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(bundleSchema) }}
@@ -169,7 +153,6 @@ export default async function BundlePage({ params }: BundlePageProps) {
       />
 
       <div className="bg-background min-h-screen">
-        {/* Breadcrumb */}
         <div className="border-b">
           <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
             <Breadcrumb>
@@ -194,11 +177,9 @@ export default async function BundlePage({ params }: BundlePageProps) {
           </div>
         </div>
 
-        {/* Bundle Hero Section */}
         <section className="py-8 lg:py-12">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-              {/* Left: Hero Image */}
               <div className="relative">
                 <div className="bg-muted relative aspect-[4/3] overflow-hidden rounded-2xl">
                   {heroImageUrl ? (
@@ -219,8 +200,6 @@ export default async function BundlePage({ params }: BundlePageProps) {
                       />
                     </div>
                   )}
-
-                  {/* Savings Badge */}
                   {hasDiscount && (
                     <div className="absolute top-4 left-4">
                       <Badge className="bg-green-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-600">
@@ -229,16 +208,16 @@ export default async function BundlePage({ params }: BundlePageProps) {
                     </div>
                   )}
                 </div>
-
-                {/* Product Thumbnails Preview */}
                 {bundle.products && bundle.products.length > 0 && (
                   <div className="mt-4 flex items-center gap-3">
                     <div className="flex -space-x-3">
                       {bundle.products.slice(0, 5).map((product, idx) => {
-                        const productImage = product.images?.[0]?.image?.url;
+                        const productImage = product.images?.[0]
+                          ? urlFor(product.images[0]).width(48).height(48).url()
+                          : undefined;
                         return (
                           <div
-                            key={product.id}
+                            key={product._id}
                             className="border-background bg-muted relative h-12 w-12 overflow-hidden rounded-lg border-2 shadow-sm"
                             style={{ zIndex: 5 - idx }}
                           >
@@ -271,49 +250,39 @@ export default async function BundlePage({ params }: BundlePageProps) {
                 )}
               </div>
 
-              {/* Right: Bundle Info */}
               <div className="flex flex-col">
-                {/* Bundle Badge */}
                 <Badge variant="secondary" className="mb-4 w-fit">
                   <HugeiconsIcon icon={PackageIcon} size={14} className="mr-1.5" />
                   Bundle Deal
                 </Badge>
-
-                {/* Title */}
                 <h1 className="text-foreground text-3xl font-bold tracking-tight lg:text-4xl">
                   {bundle.title}
                 </h1>
-
-                {/* Short Description */}
                 {bundle.shortDescription && (
                   <p className="text-muted-foreground mt-4 text-lg leading-relaxed">
                     {bundle.shortDescription}
                   </p>
                 )}
-
-                {/* Price & Actions */}
                 <div className="mt-6">
                   <BundleActions
                     bundle={{
-                      id: bundle.id,
+                      id: bundle._id,
                       title: bundle.title,
                       price: bundle.price,
                       compareAtPrice: bundle.compareAtPrice,
                       polarProductId: bundle.polarProductId,
-                      heroImage: bundle.heroImage,
+                      heroImageUrl,
                       productCount,
                     }}
                   />
                 </div>
-
-                {/* What's Included Summary */}
                 <div className="bg-muted/30 mt-8 rounded-xl border p-5">
                   <h3 className="text-foreground mb-3 text-sm font-semibold tracking-wider uppercase">
                     What&apos;s Included
                   </h3>
                   <ul className="space-y-2">
                     {bundle.products?.slice(0, 4).map((product) => (
-                      <li key={product.id} className="flex items-center gap-2 text-sm">
+                      <li key={product._id} className="flex items-center gap-2 text-sm">
                         <HugeiconsIcon
                           icon={CheckmarkCircle01Icon}
                           size={16}
@@ -334,7 +303,6 @@ export default async function BundlePage({ params }: BundlePageProps) {
           </div>
         </section>
 
-        {/* Features Section */}
         <section className="bg-muted/30 border-y py-8">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
@@ -353,7 +321,6 @@ export default async function BundlePage({ params }: BundlePageProps) {
           </div>
         </section>
 
-        {/* Bundle Description */}
         {bundle.description && (
           <section className="py-10 lg:py-12">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -367,7 +334,6 @@ export default async function BundlePage({ params }: BundlePageProps) {
           </section>
         )}
 
-        {/* Included Products Grid */}
         {bundle.products && bundle.products.length > 0 && (
           <section className="border-t py-10 lg:py-12">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -389,7 +355,32 @@ export default async function BundlePage({ params }: BundlePageProps) {
                   </div>
                 )}
               </div>
-              <ProductGrid products={bundle.products} columns={4} />
+              <ProductGrid
+                products={bundle.products.map(
+                  (p): StorefrontProduct => ({
+                    _id: p._id,
+                    _createdAt: p._createdAt,
+                    title: p.title,
+                    shortDescription: p.shortDescription,
+                    images: p.images,
+                    status: p.status,
+                    tags: p.tags,
+                    customPrice: p.customPrice,
+                    compareAtPrice: p.compareAtPrice,
+                    polarProductId: p.polarProductId,
+                    subcategory: p.subcategory,
+                    creator: p.creator
+                      ? { _id: p.creator._id, name: p.creator.name, slug: p.creator.slug }
+                      : undefined,
+                    resolvedPrice: p.resolvedPrice,
+                    id: p._id,
+                    slug: p.slug.current,
+                    price: p.resolvedPrice.price,
+                    createdAt: p._createdAt,
+                  })
+                )}
+                columns={4}
+              />
             </div>
           </section>
         )}

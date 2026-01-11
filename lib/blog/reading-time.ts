@@ -4,6 +4,8 @@
  * Requirements: 8.3
  */
 
+import type { BlockContent, SanityBlock } from "@/types/sanity";
+
 /**
  * Average reading speed in words per minute
  */
@@ -69,7 +71,7 @@ interface RichTextNode {
 /**
  * Rich text content interface (Lexical format from Payload CMS)
  */
-interface RichTextContent {
+interface LexicalRichTextContent {
   root: {
     type: string;
     children: RichTextNode[];
@@ -79,10 +81,36 @@ interface RichTextContent {
 }
 
 /**
+ * Union type for rich text content (supports both Lexical and Sanity Portable Text)
+ */
+export type RichTextContent = LexicalRichTextContent | BlockContent;
+
+/**
+ * Check if content is Lexical format
+ */
+function isLexicalContent(content: RichTextContent): content is LexicalRichTextContent {
+  return (
+    content !== null &&
+    typeof content === "object" &&
+    "root" in content &&
+    content.root !== null &&
+    typeof content.root === "object" &&
+    "children" in content.root
+  );
+}
+
+/**
+ * Check if content is Sanity Portable Text format
+ */
+function isPortableTextContent(content: RichTextContent): content is BlockContent {
+  return Array.isArray(content);
+}
+
+/**
  * Extract plain text from Lexical rich text content
  * Recursively traverses the content tree to extract all text nodes
  */
-export function extractTextFromRichContent(content: RichTextContent | null | undefined): string {
+function extractTextFromLexicalContent(content: LexicalRichTextContent): string {
   if (!content?.root?.children) return "";
 
   const extractText = (nodes: RichTextNode[]): string => {
@@ -103,8 +131,42 @@ export function extractTextFromRichContent(content: RichTextContent | null | und
 }
 
 /**
+ * Extract plain text from Sanity Portable Text content
+ * Extracts text from all block children
+ */
+function extractTextFromPortableText(content: BlockContent): string {
+  if (!content || content.length === 0) return "";
+
+  return content
+    .filter((block): block is SanityBlock => block._type === "block")
+    .map((block) => {
+      if (!block.children) return "";
+      return block.children.map((child) => child.text || "").join("");
+    })
+    .join(" ");
+}
+
+/**
+ * Extract plain text from rich text content
+ * Supports both Lexical and Sanity Portable Text formats
+ */
+export function extractTextFromRichContent(content: RichTextContent | null | undefined): string {
+  if (!content) return "";
+
+  if (isLexicalContent(content)) {
+    return extractTextFromLexicalContent(content);
+  }
+
+  if (isPortableTextContent(content)) {
+    return extractTextFromPortableText(content);
+  }
+
+  return "";
+}
+
+/**
  * Calculate reading time from rich text content
- * Extracts text from Lexical content and calculates reading time
+ * Extracts text from content and calculates reading time
  */
 export function getReadingTimeFromRichContent(content: RichTextContent | null | undefined): number {
   const text = extractTextFromRichContent(content);

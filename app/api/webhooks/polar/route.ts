@@ -1,38 +1,29 @@
 /**
  * Polar Webhook Handler
- * Handles webhook events from Polar for order fulfillment
+ *
+ * Handles webhook events from Polar for order fulfillment.
+ * Migrated from Payload CMS to Sanity CMS with Neon PostgreSQL.
+ *
+ * Requirements: 6.1 - Order creation from Polar webhooks
  */
 
 import { type NextRequest, NextResponse } from "next/server";
 import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks";
-import { getPayload } from "payload";
-import config from "@payload-config";
 import { logger } from "@/lib/logger";
 import { sendEmail, emailTemplates } from "@/lib/email";
+import {
+  processOrder,
+  getOrderByPolarId,
+  updateOrderStatus,
+  getOrderItems,
+  type PolarOrderData,
+} from "@/lib/orders/processor";
 
 // Webhook event types we handle
 type WebhookEvent = {
   type: string;
   data: Record<string, unknown>;
 };
-
-// Parsed item from checkout metadata
-interface PurchasedItem {
-  productId: number;
-  type: "product" | "bundle";
-  polarProductId: string;
-}
-
-// Order item for database
-interface OrderItem {
-  type: "product" | "bundle";
-  productId?: number;
-  bundleId?: number;
-  title: string;
-  fileKey: string;
-  maxDownloads: number;
-  downloadsUsed: number;
-}
 
 export async function POST(request: NextRequest) {
   const webhookSecret = process.env.POLAR_WEBHOOK_SECRET;
@@ -115,7 +106,8 @@ async function handleCheckoutUpdated(data: Record<string, unknown>) {
  */
 async function handleOrderCreated(data: Record<string, unknown>) {
   const orderId = data.id as string;
-  const customerEmail = (data.customer as Record<string, unknown>)?.email as string;
+  const customer = data.customer as Record<string, unknown> | undefined;
+  const customerEmail = customer?.email as string;
 
   logger.info({ orderId, customerEmail }, "Order created (pending payment)");
 }
@@ -126,185 +118,47 @@ async function handleOrderCreated(data: Record<string, unknown>) {
  */
 async function handleOrderPaid(data: Record<string, unknown>) {
   const polarOrderId = data.id as string;
-  const customer = data.customer as Record<string, unknown>;
+  const customer = data.customer as Record<string, unknown> | undefined;
   const customerEmail = customer?.email as string;
   const metadata = data.metadata as Record<string, string> | undefined;
-  const totalAmount = (data.amount as number) ?? 0;
-  const currency = (data.currency as string) ?? "usd";
+  const totalAmount = (data.amount as number | undefined) ?? 0;
+  const currency = (data.currency as string | undefined) ?? "usd";
 
   logger.info({ polarOrderId, customerEmail, totalAmount }, "Order paid - processing fulfillment");
 
-  const payload = await getPayload({ config });
+  // Build order data for processing
+  const orderData: PolarOrderData = {
+    id: polarOrderId,
+    checkoutId: metadata?.checkoutId,
+    customer: { email: customerEmail },
+    amount: totalAmount,
+    currency,
+    metadata,
+  };
 
-  // Mark checkout as completed (for cart abandonment tracking)
-  if (metadata?.checkoutId) {
-    try {
-      const checkouts = await payload.find({
-        collection: "checkouts",
-        where: { polarCheckoutId: { equals: metadata.checkoutId } },
-        limit: 1,
-      });
-      const checkout = checkouts.docs[0];
-      if (checkout) {
-        await payload.update({
-          collection: "checkouts",
-          id: checkout.id,
-          data: { completed: true },
-        });
-      }
-    } catch (e) {
-      logger.warn({ error: e }, "Failed to mark checkout as completed");
-    }
+  // Process the order (creates records in Neon, tracks analytics)
+  const result = await processOrder(orderData);
+
+  if (!result.success) {
+    logger.error({ polarOrderId, error: result.error }, "Failed to process order");
+    throw new Error(result.error);
   }
 
-  // Check if order already exists (idempotency)
-  const existingOrder = await payload.find({
-    collection: "orders",
-    where: { polarOrderId: { equals: polarOrderId } },
-    limit: 1,
-  });
-
-  if (existingOrder.docs.length > 0) {
-    logger.info({ polarOrderId }, "Order already exists, skipping creation");
+  if (result.alreadyExists) {
+    logger.info({ polarOrderId }, "Order already processed, skipping emails");
     return;
   }
 
-  // Parse purchased items from metadata
-  let purchasedItems: PurchasedItem[] = [];
-  if (metadata?.items) {
-    try {
-      purchasedItems = JSON.parse(metadata.items);
-    } catch (e) {
-      logger.error({ error: e, metadata }, "Failed to parse items metadata");
-    }
-  }
-
-  if (purchasedItems.length === 0) {
-    logger.error({ polarOrderId }, "No items found in order metadata");
-    return;
-  }
-
-  // Build order items with product details
-  const orderItems: OrderItem[] = [];
-  let primaryCreatorId: number | null = null;
-
-  for (const item of purchasedItems) {
-    try {
-      if (item.type === "product") {
-        const product = await payload.findByID({
-          collection: "products",
-          id: item.productId,
-          depth: 1,
-        });
-
-        if (product) {
-          // Get file key from the product's file upload
-          const file = product.file as { filename?: string } | number | null;
-          const fileKey = typeof file === "object" && file?.filename ? file.filename : "";
-
-          orderItems.push({
-            type: "product",
-            productId: product.id,
-            title: product.title,
-            fileKey,
-            maxDownloads: 5,
-            downloadsUsed: 0,
-          });
-
-          // Track creator for revenue attribution (use first product's creator)
-          if (!primaryCreatorId && product.createdBy) {
-            primaryCreatorId =
-              typeof product.createdBy === "object"
-                ? (product.createdBy as { id: number }).id
-                : (product.createdBy as number);
-          }
-        }
-      } else if (item.type === "bundle") {
-        const bundle = await payload.findByID({
-          collection: "bundles",
-          id: item.productId,
-          depth: 2,
-        });
-
-        if (bundle) {
-          // For bundles, add each product as a separate item
-          const products = bundle.products as Array<{
-            id: number;
-            title: string;
-            file?: { filename?: string } | number;
-            createdBy?: { id: number } | number;
-          }>;
-
-          for (const product of products) {
-            const file = product.file;
-            const fileKey = typeof file === "object" && file?.filename ? file.filename : "";
-
-            orderItems.push({
-              type: "bundle",
-              bundleId: bundle.id,
-              productId: product.id,
-              title: product.title,
-              fileKey,
-              maxDownloads: 5,
-              downloadsUsed: 0,
-            });
-          }
-
-          // Track creator
-          if (!primaryCreatorId && bundle.createdBy) {
-            primaryCreatorId =
-              typeof bundle.createdBy === "object"
-                ? (bundle.createdBy as { id: number }).id
-                : (bundle.createdBy as number);
-          }
-        }
-      }
-    } catch (error) {
-      logger.error({ error, item }, "Failed to fetch product/bundle details");
-    }
-  }
-
-  if (orderItems.length === 0) {
-    logger.error({ polarOrderId }, "No valid items found for order");
-    return;
-  }
-
-  // Create order in database
-  try {
-    const order = await payload.create({
-      collection: "orders",
-      data: {
-        polarOrderId,
-        polarCheckoutId: metadata?.checkoutId || null,
-        email: customerEmail,
-        status: "completed",
-        items: orderItems,
-        totalAmount,
-        currency,
-        fulfilled: false,
-        createdBy: primaryCreatorId || undefined,
-        expiresAt: null, // No expiration by default
-      },
-    });
-
-    logger.info({ orderId: order.id, polarOrderId }, "Order created in database");
+  // Get order items for email
+  if (result.orderId) {
+    const orderItems = await getOrderItems(result.orderId);
 
     // Send emails asynchronously (don't block webhook response)
-    sendFulfillmentEmails(order.id, customerEmail, orderItems, totalAmount, currency).catch(
+    sendFulfillmentEmails(result.orderId, customerEmail, orderItems, totalAmount, currency).catch(
       (error) => {
-        logger.error({ error, orderId: order.id }, "Failed to send fulfillment emails");
+        logger.error({ error, orderId: result.orderId }, "Failed to send fulfillment emails");
       }
     );
-
-    // Mark order as fulfilled
-    await payload.update({
-      collection: "orders",
-      id: order.id,
-      data: { fulfilled: true },
-    });
-  } catch (error) {
-    logger.error({ error, polarOrderId }, "Failed to create order in database");
-    throw error; // Re-throw to trigger webhook retry
   }
 }
 
@@ -314,11 +168,15 @@ async function handleOrderPaid(data: Record<string, unknown>) {
 async function sendFulfillmentEmails(
   orderId: number,
   email: string,
-  items: OrderItem[],
+  items: Array<{
+    id: number;
+    title: string;
+    fileKey: string | null;
+  }>,
   totalAmount: number,
   currency: string
 ) {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.notifications.digiinsta.store";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.digiinsta.store";
   const formattedTotal = new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: currency.toUpperCase(),
@@ -340,13 +198,12 @@ async function sendFulfillmentEmails(
 
   logger.info({ orderId, email }, "Purchase receipt email sent");
 
-  // Send download email with links for each item
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    if (!item?.fileKey) continue;
+  // Send download email with links for each item that has a file
+  for (const item of items) {
+    if (!item.fileKey) continue;
 
     // Generate download URL (points to our secure download endpoint)
-    const downloadUrl = `${appUrl}/api/download/${orderId}/${i}?email=${encodeURIComponent(email)}`;
+    const downloadUrl = `${appUrl}/api/download/${orderId}/${item.id}?email=${encodeURIComponent(email)}`;
 
     const downloadTemplate = emailTemplates.downloadEmail(item.title, downloadUrl, "30 days");
 
@@ -367,43 +224,29 @@ async function sendFulfillmentEmails(
  */
 async function handleOrderRefunded(data: Record<string, unknown>) {
   const polarOrderId = data.id as string;
-  const customerEmail = (data.customer as Record<string, unknown>)?.email as string;
+  const customer = data.customer as Record<string, unknown> | undefined;
+  const customerEmail = customer?.email as string;
 
   logger.info({ polarOrderId, customerEmail }, "Order refunded");
 
-  const payload = await getPayload({ config });
-
   // Find and update the order
-  const existingOrder = await payload.find({
-    collection: "orders",
-    where: { polarOrderId: { equals: polarOrderId } },
-    limit: 1,
-  });
+  const order = await getOrderByPolarId(polarOrderId);
 
-  if (existingOrder.docs.length > 0) {
-    const order = existingOrder.docs[0];
-    if (!order) return;
-
-    await payload.update({
-      collection: "orders",
-      id: order.id,
-      data: { status: "refunded" },
-    });
-
+  if (order) {
+    await updateOrderStatus(order.id, "refunded");
     logger.info({ orderId: order.id, polarOrderId }, "Order marked as refunded");
 
     // Send refund notification email
+    const refundTemplate = emailTemplates.refundProcessed(order.id);
+
     await sendEmail({
       to: customerEmail,
-      subject: `Refund Processed - Order ${order.id}`,
-      html: `
-        <h1>Refund Processed</h1>
-        <p>Your refund for order <strong>${order.id}</strong> has been processed.</p>
-        <p>The funds should appear in your account within 5-10 business days.</p>
-        <p>If you have any questions, please contact our support team.</p>
-      `,
+      subject: refundTemplate.subject,
+      html: refundTemplate.html,
       from: `DigiInsta <noreply@${process.env.RESEND_DOMAIN ?? "notifications.digiinsta.store"}>`,
     });
+
+    logger.info({ orderId: order.id, email: customerEmail }, "Refund notification email sent");
   }
 }
 
@@ -424,8 +267,8 @@ async function handleCheckoutFailed(data: Record<string, unknown>) {
     return;
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.notifications.digiinsta.store";
-  const retryUrl = checkoutUrl || `${appUrl}/cart`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.digiinsta.store";
+  const retryUrl = checkoutUrl ?? `${appUrl}/cart`;
 
   const failedTemplate = emailTemplates.failedPayment(checkoutId, retryUrl);
 
@@ -455,7 +298,7 @@ async function handleOrderFailed(data: Record<string, unknown>) {
     return;
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.notifications.digiinsta.store";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.digiinsta.store";
   const retryUrl = `${appUrl}/cart`;
 
   const failedTemplate = emailTemplates.failedPayment(orderId, retryUrl);

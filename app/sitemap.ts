@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
-import { getPayload } from "payload";
-import config from "@payload-config";
+import { sanityClient } from "@/lib/sanity/client";
+import { groq } from "next-sanity";
 import {
   generateCanonicalUrl,
   getChangeFrequency,
@@ -15,48 +15,46 @@ import {
 const URLS_PER_SITEMAP = 10000;
 
 /**
+ * Sitemap document type for Sanity queries
+ */
+interface SitemapDocument {
+  slug: string;
+  _updatedAt: string;
+}
+
+/**
  * Generates sitemap index for large catalogs
  * Returns array of sitemap IDs when total URLs exceed URLS_PER_SITEMAP
- * Validates: Requirements 9.2
+ * Validates: Requirements 9.4
  */
 export async function generateSitemaps(): Promise<{ id: number }[]> {
-  const payload = await getPayload({ config });
+  // Count total URLs from Sanity
+  const countQuery = groq`{
+    "products": count(*[_type == "product" && status == "active"]),
+    "categories": count(*[_type == "category" && status == "active"]),
+    "subcategories": count(*[_type == "subcategory" && status == "active"]),
+    "bundles": count(*[_type == "bundle" && status == "active"]),
+    "posts": count(*[_type == "post" && status == "published"])
+  }`;
 
-  // Count total URLs
-  const [productsCount, categoriesCount, subcategoriesCount, bundlesCount, postsCount] =
-    await Promise.all([
-      payload.count({
-        collection: "products",
-        where: { status: { equals: "active" } },
-      }),
-      payload.count({
-        collection: "categories",
-        where: { status: { equals: "active" } },
-      }),
-      payload.count({
-        collection: "subcategories",
-        where: { status: { equals: "active" } },
-      }),
-      payload.count({
-        collection: "bundles",
-        where: { status: { equals: "active" } },
-      }),
-      payload.count({
-        collection: "posts",
-        where: { status: { equals: "published" } },
-      }),
-    ]);
+  const counts = await sanityClient.fetch<{
+    products: number;
+    categories: number;
+    subcategories: number;
+    bundles: number;
+    posts: number;
+  }>(countQuery);
 
   // Static pages count (approximately 16 pages)
   const staticPagesCount = 16;
 
   const totalUrls =
     staticPagesCount +
-    productsCount.totalDocs +
-    categoriesCount.totalDocs +
-    subcategoriesCount.totalDocs +
-    bundlesCount.totalDocs +
-    postsCount.totalDocs;
+    counts.products +
+    counts.categories +
+    counts.subcategories +
+    counts.bundles +
+    counts.posts;
 
   // Calculate number of sitemaps needed
   const numSitemaps = Math.ceil(totalUrls / URLS_PER_SITEMAP);
@@ -68,18 +66,20 @@ export async function generateSitemaps(): Promise<{ id: number }[]> {
 /**
  * Generates the main sitemap with all site URLs
  * Supports pagination for sitemap index
- * Validates: Requirements 9.1, 9.2
+ * Validates: Requirements 9.4
  */
 export default async function sitemap({ id }: { id: number }): Promise<MetadataRoute.Sitemap> {
-  const payload = await getPayload({ config });
   const now = new Date();
 
+  // Ensure id is a valid number, default to 0
+  const sitemapId = typeof id === "number" && !isNaN(id) ? id : 0;
+
   // Calculate offset for pagination
-  const offset = id * URLS_PER_SITEMAP;
+  const offset = sitemapId * URLS_PER_SITEMAP;
 
   // Static pages with proper attributes (only include in first sitemap)
   const staticPages: MetadataRoute.Sitemap =
-    id === 0
+    sitemapId === 0
       ? [
           {
             url: generateCanonicalUrl("/"),
@@ -185,80 +185,90 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
   const remainingSpace = URLS_PER_SITEMAP - staticPagesCount;
 
   // Adjust offset for dynamic content (accounting for static pages in first sitemap)
-  const dynamicOffset = id === 0 ? 0 : offset - 16; // 16 static pages
+  const dynamicOffset = sitemapId === 0 ? 0 : Math.max(0, offset - 16); // 16 static pages
 
-  // Fetch all active products with pagination
-  const products = await payload.find({
-    collection: "products",
-    where: { status: { equals: "active" } },
-    limit: remainingSpace,
-    page: Math.floor(dynamicOffset / remainingSpace) + 1,
-    select: { slug: true, updatedAt: true },
-  });
+  // Ensure we have valid integers for GROQ slice
+  const startIndex = Math.max(0, Math.floor(dynamicOffset));
+  const endIndex = Math.max(startIndex, Math.floor(dynamicOffset + remainingSpace));
 
-  const productPages: MetadataRoute.Sitemap = products.docs.map((product) => ({
+  // Fetch all active products from Sanity
+  const productsQuery = groq`
+    *[_type == "product" && status == "active"] | order(_createdAt desc) [${startIndex}...${endIndex}] {
+      "slug": slug.current,
+      _updatedAt
+    }
+  `;
+  const products = await sanityClient.fetch<SitemapDocument[]>(productsQuery);
+
+  const productPages: MetadataRoute.Sitemap = products.map((product: SitemapDocument) => ({
     url: generateCanonicalUrl(`/products/${product.slug}`),
-    lastModified: new Date(product.updatedAt),
+    lastModified: new Date(product._updatedAt),
     changeFrequency: getChangeFrequency("product"),
     priority: getPriority("product"),
   }));
 
-  // Fetch all active categories
-  const categories = await payload.find({
-    collection: "categories",
-    where: { status: { equals: "active" } },
-    limit: 1000,
-    select: { slug: true, updatedAt: true },
-  });
+  // Fetch all active categories from Sanity
+  const categoriesQuery = groq`
+    *[_type == "category" && status == "active"] | order(displayOrder asc) {
+      "slug": slug.current,
+      _updatedAt
+    }
+  `;
+  const categories = await sanityClient.fetch<SitemapDocument[]>(categoriesQuery);
 
-  const categoryPages: MetadataRoute.Sitemap = categories.docs.map((category) => ({
+  const categoryPages: MetadataRoute.Sitemap = categories.map((category: SitemapDocument) => ({
     url: generateCanonicalUrl(`/categories/${category.slug}`),
-    lastModified: new Date(category.updatedAt),
+    lastModified: new Date(category._updatedAt),
     changeFrequency: getChangeFrequency("category"),
     priority: getPriority("category"),
   }));
 
-  // Fetch all active subcategories
-  const subcategories = await payload.find({
-    collection: "subcategories",
-    where: { status: { equals: "active" } },
-    limit: 5000,
-    select: { slug: true, updatedAt: true },
-  });
+  // Fetch all active subcategories from Sanity
+  const subcategoriesQuery = groq`
+    *[_type == "subcategory" && status == "active"] | order(title asc) {
+      "slug": slug.current,
+      _updatedAt
+    }
+  `;
+  const subcategories = await sanityClient.fetch<SitemapDocument[]>(subcategoriesQuery);
 
-  const subcategoryPages: MetadataRoute.Sitemap = subcategories.docs.map((subcategory) => ({
-    url: generateCanonicalUrl(`/subcategories/${subcategory.slug}`),
-    lastModified: new Date(subcategory.updatedAt),
-    changeFrequency: getChangeFrequency("category"),
-    priority: 0.6,
-  }));
+  const subcategoryPages: MetadataRoute.Sitemap = subcategories.map(
+    (subcategory: SitemapDocument) => ({
+      url: generateCanonicalUrl(`/subcategories/${subcategory.slug}`),
+      lastModified: new Date(subcategory._updatedAt),
+      changeFrequency: getChangeFrequency("category"),
+      priority: 0.6,
+    })
+  );
 
-  // Fetch all active bundles
-  const bundles = await payload.find({
-    collection: "bundles",
-    where: { status: { equals: "active" } },
-    limit: 1000,
-    select: { slug: true, updatedAt: true },
-  });
+  // Fetch all active bundles from Sanity
+  const bundlesQuery = groq`
+    *[_type == "bundle" && status == "active"] | order(_createdAt desc) {
+      "slug": slug.current,
+      _updatedAt
+    }
+  `;
+  const bundles = await sanityClient.fetch<SitemapDocument[]>(bundlesQuery);
 
-  const bundlePages: MetadataRoute.Sitemap = bundles.docs.map((bundle) => ({
+  const bundlePages: MetadataRoute.Sitemap = bundles.map((bundle: SitemapDocument) => ({
     url: generateCanonicalUrl(`/bundles/${bundle.slug}`),
-    lastModified: new Date(bundle.updatedAt),
+    lastModified: new Date(bundle._updatedAt),
     changeFrequency: getChangeFrequency("bundle"),
     priority: getPriority("bundle"),
   }));
 
-  // Fetch all published blog posts
-  const posts = await payload.find({
-    collection: "posts",
-    where: { status: { equals: "published" } },
-    limit: 5000,
-    select: { slug: true, updatedAt: true },
-  });
+  // Fetch all published blog posts from Sanity
+  const postsQuery = groq`
+    *[_type == "post" && status == "published"] | order(publishedAt desc) {
+      "slug": slug.current,
+      _updatedAt
+    }
+  `;
+  const posts = await sanityClient.fetch<SitemapDocument[]>(postsQuery);
 
-  const postPages: MetadataRoute.Sitemap = posts.docs.map((post) => ({
+  const postPages: MetadataRoute.Sitemap = posts.map((post: SitemapDocument) => ({
     url: generateCanonicalUrl(`/blog/${post.slug}`),
-    lastModified: new Date(post.updatedAt),
+    lastModified: new Date(post._updatedAt),
     changeFrequency: getChangeFrequency("post"),
     priority: getPriority("post"),
   }));
@@ -276,7 +286,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
   // Log warning if sitemap exceeds limit
   if (allPages.length > MAX_URLS_PER_SITEMAP) {
     console.warn(
-      `Sitemap ${id} has ${allPages.length} URLs, exceeding the recommended limit of ${MAX_URLS_PER_SITEMAP}.`
+      `Sitemap ${sitemapId} has ${allPages.length} URLs, exceeding the recommended limit of ${MAX_URLS_PER_SITEMAP}.`
     );
   }
 

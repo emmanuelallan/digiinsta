@@ -9,7 +9,7 @@ import { initiateExpressCheckout } from "@/lib/checkout";
 
 interface BuyNowButtonProps {
   polarProductId: string;
-  productId: number;
+  productId: string;
   type: "product" | "bundle";
   title?: string;
   price?: number;

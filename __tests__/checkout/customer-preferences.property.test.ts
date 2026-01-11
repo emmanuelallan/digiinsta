@@ -77,8 +77,8 @@ describe("Customer Preferences Persistence", () => {
       email: fc.option(emailArb, { nil: undefined }),
       lastCheckoutAt: fc.option(
         fc
-          .date({ min: new Date("2020-01-01"), max: new Date("2030-01-01") })
-          .map((d) => d.toISOString()),
+          .integer({ min: 1577836800000, max: 1893456000000 }) // 2020-01-01 to 2030-01-01 in ms
+          .map((ms) => new Date(ms).toISOString()),
         { nil: undefined }
       ),
     });

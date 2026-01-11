@@ -41,8 +41,7 @@
       "@/components/*": ["./components/*"],
       "@/lib/*": ["./lib/*"],
       "@/collections/*": ["./collections/*"],
-      "@/public/*": ["./public/*"],
-      "@payload-config": ["./payload.config.ts"]
+      "@/public/*": ["./public/*"]
     },
 
     // Next.js
@@ -65,6 +64,7 @@
     "migrations",
     "vitest.config.ts",
     "__tests__",
-    "__tests__search"
+    "__tests__search",
+    "studio-digiinsta"
   ]
 }

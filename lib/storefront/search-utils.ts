@@ -29,12 +29,12 @@ export function applyFiltersToProducts(
 
   // Filter by category
   if (filters.category) {
-    filtered = filtered.filter((p) => p.subcategory?.category?.slug === filters.category);
+    filtered = filtered.filter((p) => p.subcategory?.category?.slug?.current === filters.category);
   }
 
   // Filter by subcategory
   if (filters.subcategory) {
-    filtered = filtered.filter((p) => p.subcategory?.slug === filters.subcategory);
+    filtered = filtered.filter((p) => p.subcategory?.slug?.current === filters.subcategory);
   }
 
   // Filter by price range
@@ -50,7 +50,7 @@ export function applyFiltersToProducts(
   if (filters.tags && filters.tags.length > 0) {
     const lowerTags = filters.tags.map((t) => t.toLowerCase());
     filtered = filtered.filter((p) =>
-      p.tags?.some((t) => t.tag && lowerTags.includes(t.tag.toLowerCase()))
+      p.tags?.some((t) => t && lowerTags.includes(t.toLowerCase()))
     );
   }
 
@@ -82,12 +82,12 @@ export function applySortToProducts(
       // For best-selling, we'd need sales data. For now, prioritize products with "best-seller" tag
       return sorted.sort((a, b) => {
         const aIsBestSeller = a.tags?.some(
-          (t) => t.tag?.toLowerCase() === "best-seller" || t.tag?.toLowerCase() === "bestseller"
+          (t) => t?.toLowerCase() === "best-seller" || t?.toLowerCase() === "bestseller"
         )
           ? 1
           : 0;
         const bIsBestSeller = b.tags?.some(
-          (t) => t.tag?.toLowerCase() === "best-seller" || t.tag?.toLowerCase() === "bestseller"
+          (t) => t?.toLowerCase() === "best-seller" || t?.toLowerCase() === "bestseller"
         )
           ? 1
           : 0;
@@ -119,7 +119,7 @@ export function productMatchesQuery(product: StorefrontProduct, query: string): 
   }
 
   // Check tags
-  if (product.tags?.some((t) => t.tag?.toLowerCase().includes(lowerQuery))) {
+  if (product.tags?.some((t) => t?.toLowerCase().includes(lowerQuery))) {
     return true;
   }
 
@@ -139,11 +139,12 @@ export function getFilterOptions(products: StorefrontProduct[]): {
   for (const product of products) {
     const category = product.subcategory?.category;
     if (category) {
-      const existing = categoryMap.get(category.slug);
+      const slug = category.slug?.current ?? "";
+      const existing = categoryMap.get(slug);
       if (existing) {
         existing.count++;
       } else {
-        categoryMap.set(category.slug, { title: category.title, count: 1 });
+        categoryMap.set(slug, { title: category.title, count: 1 });
       }
     }
   }
@@ -158,9 +159,9 @@ export function getFilterOptions(products: StorefrontProduct[]): {
   // Extract unique tags with counts
   const tagMap = new Map<string, number>();
   for (const product of products) {
-    for (const tagObj of product.tags ?? []) {
-      if (tagObj.tag) {
-        const tag = tagObj.tag.toLowerCase();
+    for (const tagStr of product.tags ?? []) {
+      if (tagStr) {
+        const tag = tagStr.toLowerCase();
         tagMap.set(tag, (tagMap.get(tag) ?? 0) + 1);
       }
     }

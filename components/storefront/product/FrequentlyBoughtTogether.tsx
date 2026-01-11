@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 interface FrequentlyBoughtTogetherProps {
   /** The source product */
   sourceProduct: {
-    id: number;
+    id: string;
     title: string;
     price: number;
     compareAtPrice?: number | null;
@@ -30,7 +30,7 @@ interface FrequentlyBoughtTogetherProps {
 }
 
 interface SelectableProduct {
-  id: number;
+  id: string;
   title: string;
   slug: string;
   price: number;
@@ -54,11 +54,6 @@ export function FrequentlyBoughtTogether({
   // Limit related products
   const displayProducts = relatedProducts.slice(0, limit);
 
-  // Don't render if no related products
-  if (displayProducts.length === 0) {
-    return null;
-  }
-
   // Initialize selectable products (source + related)
   const sourceImage = sourceProduct.images?.[0]?.image?.url;
   const [selectedProducts, setSelectedProducts] = useState<SelectableProduct[]>(() => [
@@ -74,19 +69,24 @@ export function FrequentlyBoughtTogether({
       isSource: true,
     },
     ...displayProducts.map((p) => ({
-      id: p.id,
+      id: p._id,
       title: p.title,
       slug: p.slug,
-      price: p.price ?? 0,
-      compareAtPrice: p.compareAtPrice,
+      price: p.resolvedPrice.price,
+      compareAtPrice: p.resolvedPrice.compareAtPrice,
       polarProductId: p.polarProductId ?? "",
-      image: p.images?.[0]?.image?.url ?? undefined,
+      image: undefined, // Images will be handled separately
       selected: true,
       isSource: false,
     })),
   ]);
 
-  const toggleProduct = (productId: number) => {
+  // Don't render if no related products
+  if (displayProducts.length === 0) {
+    return null;
+  }
+
+  const toggleProduct = (productId: string) => {
     setSelectedProducts((prev) =>
       prev.map((p) => {
         // Don't allow deselecting the source product

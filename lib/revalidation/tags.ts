@@ -27,6 +27,7 @@ export const COLLECTION_TAGS = {
   bestSellers: "collection:best-sellers",
   newArrivals: "collection:new-arrivals",
   editorsPicks: "collection:editors-picks",
+  onSale: "collection:on-sale",
   allProducts: "collection:all-products",
   allCategories: "collection:all-categories",
   allBundles: "collection:all-bundles",

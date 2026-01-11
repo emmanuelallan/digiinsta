@@ -1,239 +1,255 @@
 /**
  * Product Recommendations Service
- * Server-side functions for fetching product recommendations
+ * Server-side functions for fetching product recommendations using Sanity CMS
+ *
+ * Requirements: 11.1-11.2 - Product recommendations
  */
 
-import { getPayload } from "payload";
-import config from "@payload-config";
+import {
+  getAllProducts as sanityGetAllProducts,
+  getProductsByCategorySlug,
+  type SanityProduct,
+} from "@/lib/sanity/queries/products";
+import {
+  getAllCategories,
+  getCategoryBySlug,
+  getSubcategoriesByCategorySlug,
+  type SanityCategory,
+  type SanitySubcategory,
+} from "@/lib/sanity/queries/categories";
+import { resolveProductPrice } from "@/lib/pricing/resolver";
 import type {
   StorefrontProduct,
   StorefrontSubcategory,
   StorefrontCategory,
 } from "@/types/storefront";
-import type { Product, Category, Subcategory, Media } from "@/payload-types";
 
-/**
- * Get Payload instance
- */
-async function getPayloadClient() {
-  return getPayload({ config });
-}
-
-/**
- * Transform Payload category to storefront category
- */
-function transformCategory(category: Category): StorefrontCategory {
-  return {
-    ...category,
-    image: category.image as Media | null,
-  };
-}
-
-/**
- * Transform Payload subcategory to storefront subcategory
- */
-function transformSubcategory(subcategory: Subcategory): StorefrontSubcategory {
-  const category = subcategory.category as Category;
-  return {
-    ...subcategory,
-    category: transformCategory(category),
-  };
-}
-
-/**
- * Transform Payload product to storefront product
- */
-function transformProduct(product: Product): StorefrontProduct {
-  return {
-    ...product,
-    subcategory: transformSubcategory(product.subcategory as Subcategory),
-    images:
-      product.images?.map((img) => ({
-        ...img,
-        image: img.image as Media,
-      })) ?? null,
-    file: product.file as Media,
-    price: product.price,
-    compareAtPrice: product.compareAtPrice ?? undefined,
-  };
-}
+// ISR revalidation time in seconds (5 minutes)
+export const RECOMMENDATIONS_REVALIDATE = 300;
 
 /**
  * Get frequently bought together products
  * Returns products from the same subcategory that complement the source product
  *
- * @param productId - The source product ID to find recommendations for
+ * @param productId - The source product Sanity ID to find recommendations for
  * @param limit - Maximum number of products to return (default: 4)
  * @returns Array of recommended products, excluding the source product
  */
 export async function getFrequentlyBoughtTogether(
-  productId: number,
+  productId: string,
   limit = 4
 ): Promise<StorefrontProduct[]> {
-  const payload = await getPayloadClient();
-
-  // First, get the source product to find its subcategory
-  const sourceProduct = await payload.findByID({
-    collection: "products",
-    id: productId,
-    depth: 2,
-  });
+  // Get all products to find the source product
+  const allProducts = await sanityGetAllProducts();
+  const sourceProduct = allProducts.find((p) => p._id === productId);
 
   if (!sourceProduct) {
     return [];
   }
 
-  const subcategory = sourceProduct.subcategory as Subcategory;
-  const subcategoryId = typeof subcategory === "number" ? subcategory : subcategory.id;
+  const subcategoryId = sourceProduct.subcategory._id;
 
   // Get products from the same subcategory, excluding the source product
-  const result = await payload.find({
-    collection: "products",
-    where: {
-      status: { equals: "active" },
-      id: { not_equals: productId },
-      subcategory: { equals: subcategoryId },
-    },
-    limit,
-    depth: 3,
-    sort: "-createdAt",
-  });
+  const subcategoryProducts = allProducts.filter(
+    (p) => p.subcategory._id === subcategoryId && p._id !== productId
+  );
 
-  return result.docs.map(transformProduct);
+  // Sort by newest and limit
+  const sortedProducts = subcategoryProducts
+    .sort((a, b) => new Date(b._createdAt).getTime() - new Date(a._createdAt).getTime())
+    .slice(0, limit);
+
+  return sortedProducts.map(transformProduct);
 }
 
 /**
  * Get customers also viewed products
  * Returns products from the same category (via sibling subcategories) or related categories
  *
- * @param productId - The source product ID to find recommendations for
- * @param categoryId - The category ID to find related products from
+ * @param productId - The source product Sanity ID to find recommendations for
+ * @param categorySlug - The category slug to find related products from
  * @param limit - Maximum number of products to return (default: 4)
  * @returns Array of recommended products, excluding the source product
  */
 export async function getCustomersAlsoViewed(
-  productId: number,
-  categoryId: number,
+  productId: string,
+  categorySlug: string,
   limit = 4
 ): Promise<StorefrontProduct[]> {
-  const payload = await getPayloadClient();
+  // Get products from the same category
+  const categoryProducts = await getProductsByCategorySlug(categorySlug);
 
-  // Get all subcategories for this category
-  const subcategories = await payload.find({
-    collection: "subcategories",
-    where: {
-      category: { equals: categoryId },
-      status: { equals: "active" },
-    },
-    depth: 0,
-  });
+  // Filter out the source product and limit
+  const filteredProducts = categoryProducts
+    .filter((p) => p._id !== productId)
+    .sort((a, b) => new Date(b._createdAt).getTime() - new Date(a._createdAt).getTime())
+    .slice(0, limit);
 
-  const subcategoryIds = subcategories.docs.map((s) => s.id);
-
-  if (subcategoryIds.length === 0) {
-    return [];
-  }
-
-  // Get products from the same category (any subcategory), excluding the source product
-  const result = await payload.find({
-    collection: "products",
-    where: {
-      status: { equals: "active" },
-      id: { not_equals: productId },
-      subcategory: { in: subcategoryIds },
-    },
-    limit,
-    depth: 3,
-    sort: "-createdAt",
-  });
-
-  return result.docs.map(transformProduct);
+  return filteredProducts.map(transformProduct);
 }
 
 /**
- * Get related categories (sibling categories and parent category info)
+ * Get related categories (sibling categories and current category info)
  *
- * @param categoryId - The current category ID
+ * @param categorySlug - The current category slug
  * @param limit - Maximum number of sibling categories to return (default: 4)
- * @returns Object containing parent category and sibling categories
+ * @returns Object containing current category and sibling categories
  */
 export async function getRelatedCategories(
-  categoryId: number,
+  categorySlug: string,
   limit = 4
 ): Promise<{
   siblings: StorefrontCategory[];
   current: StorefrontCategory | null;
 }> {
-  const payload = await getPayloadClient();
-
   // Get the current category
-  const currentCategory = await payload.findByID({
-    collection: "categories",
-    id: categoryId,
-    depth: 1,
-  });
+  const currentCategory = await getCategoryBySlug(categorySlug);
 
   if (!currentCategory) {
     return { siblings: [], current: null };
   }
 
-  // Get sibling categories (other active categories)
-  const siblings = await payload.find({
-    collection: "categories",
-    where: {
-      status: { equals: "active" },
-      id: { not_equals: categoryId },
-    },
-    limit,
-    depth: 1,
-    sort: "title",
-  });
+  // Get all categories to find siblings
+  const allCategories = await getAllCategories();
+
+  // Filter out current category and limit
+  const siblings = allCategories.filter((c) => c._id !== currentCategory._id).slice(0, limit);
 
   return {
     current: transformCategory(currentCategory),
-    siblings: siblings.docs.map(transformCategory),
+    siblings: siblings.map(transformCategory),
   };
 }
 
 /**
  * Get subcategories for a category (for internal linking)
  *
- * @param categoryId - The category ID to get subcategories for
+ * @param categorySlug - The category slug to get subcategories for
  * @returns Array of subcategories with product counts
  */
 export async function getSubcategoriesWithCounts(
-  categoryId: number
+  categorySlug: string
 ): Promise<Array<StorefrontSubcategory & { productCount: number }>> {
-  const payload = await getPayloadClient();
-
   // Get subcategories for this category
-  const subcategories = await payload.find({
-    collection: "subcategories",
-    where: {
-      category: { equals: categoryId },
-      status: { equals: "active" },
-    },
-    depth: 2,
-    sort: "title",
+  const subcategories = await getSubcategoriesByCategorySlug(categorySlug);
+
+  // Get all products to count per subcategory
+  const allProducts = await sanityGetAllProducts();
+
+  // Calculate product counts for each subcategory
+  const subcategoriesWithCounts = subcategories.map((subcategory: SanitySubcategory) => {
+    const productCount = allProducts.filter((p) => p.subcategory._id === subcategory._id).length;
+
+    return {
+      ...transformSubcategory(subcategory),
+      productCount,
+    };
   });
 
-  // Get product counts for each subcategory
-  const subcategoriesWithCounts = await Promise.all(
-    subcategories.docs.map(async (subcategory) => {
-      const count = await payload.count({
-        collection: "products",
-        where: {
-          subcategory: { equals: subcategory.id },
-          status: { equals: "active" },
-        },
-      });
+  return subcategoriesWithCounts;
+}
 
-      return {
-        ...transformSubcategory(subcategory),
-        productCount: count.totalDocs,
-      };
-    })
+// ============================================================================
+// Transform Functions
+// ============================================================================
+
+/**
+ * Transform Sanity category to storefront category
+ */
+function transformCategory(category: SanityCategory): StorefrontCategory {
+  return {
+    _id: category._id,
+    _type: "category",
+    _createdAt: category._createdAt,
+    _updatedAt: category._updatedAt,
+    _rev: "",
+    title: category.title,
+    slug: { _type: "slug", current: category.slug },
+    description: category.description,
+    icon: category.icon as StorefrontCategory["icon"],
+    displayOrder: category.displayOrder,
+    status: category.status,
+  };
+}
+
+/**
+ * Transform Sanity subcategory to storefront subcategory
+ */
+function transformSubcategory(subcategory: SanitySubcategory): StorefrontSubcategory {
+  return {
+    _id: subcategory._id,
+    _type: "subcategory",
+    _createdAt: subcategory._createdAt,
+    _updatedAt: subcategory._updatedAt,
+    _rev: "",
+    title: subcategory.title,
+    slug: { _type: "slug", current: subcategory.slug },
+    description: subcategory.description,
+    defaultPrice: subcategory.defaultPrice,
+    compareAtPrice: subcategory.compareAtPrice,
+    status: subcategory.status,
+    category: {
+      _id: subcategory.category._id,
+      _type: "category",
+      _createdAt: "",
+      _updatedAt: "",
+      _rev: "",
+      title: subcategory.category.title,
+      slug: { _type: "slug", current: subcategory.category.slug },
+    },
+  };
+}
+
+/**
+ * Transform Sanity product to storefront product with resolved price
+ */
+function transformProduct(product: SanityProduct): StorefrontProduct {
+  const resolvedPrice = resolveProductPrice(
+    {
+      customPrice: product.customPrice,
+      compareAtPrice: product.compareAtPrice,
+    },
+    {
+      defaultPrice: product.subcategory.defaultPrice,
+      compareAtPrice: product.subcategory.compareAtPrice,
+    }
   );
 
-  return subcategoriesWithCounts;
+  return {
+    _id: product._id,
+    _createdAt: product._createdAt,
+    title: product.title,
+    shortDescription: product.shortDescription,
+    images: product.images,
+    status: product.status,
+    tags: product.tags,
+    customPrice: product.customPrice,
+    compareAtPrice: product.compareAtPrice,
+    polarProductId: product.polarProductId,
+    subcategory: {
+      _id: product.subcategory._id,
+      title: product.subcategory.title,
+      slug: { _type: "slug", current: product.subcategory.slug },
+      defaultPrice: product.subcategory.defaultPrice,
+      compareAtPrice: product.subcategory.compareAtPrice,
+      category: {
+        _id: product.subcategory.category._id,
+        title: product.subcategory.category.title,
+        slug: { _type: "slug", current: product.subcategory.category.slug },
+      },
+    },
+    creator: product.creator
+      ? {
+          _id: product.creator._id,
+          name: product.creator.name,
+          slug: { _type: "slug", current: product.creator.slug },
+        }
+      : undefined,
+    resolvedPrice,
+    // Computed properties for component compatibility
+    id: product._id,
+    slug: product.slug,
+    price: resolvedPrice.price,
+    createdAt: product._createdAt,
+  };
 }

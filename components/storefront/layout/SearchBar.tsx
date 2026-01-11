@@ -140,9 +140,9 @@ function SearchDialogContent({
                     className="flex items-center gap-3 py-3"
                   >
                     <div className="bg-muted relative h-10 w-10 shrink-0 overflow-hidden rounded-md">
-                      {product.images?.[0]?.image?.url ? (
+                      {product.images?.[0]?.url ? (
                         <Image
-                          src={product.images[0].image.url}
+                          src={product.images[0].url}
                           alt={product.title}
                           fill
                           className="object-cover"
@@ -207,7 +207,7 @@ function SearchDialogContent({
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium">{bundle.title}</p>
                         <p className="text-muted-foreground text-xs">
-                          {bundle.products.length} products
+                          {bundle.products?.length ?? 0} products
                         </p>
                       </div>
                     </CommandItem>

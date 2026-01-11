@@ -108,8 +108,8 @@ export default async function BundlesPage() {
 
               return (
                 <Link
-                  key={bundle.id}
-                  href={`/bundles/${bundle.slug}`}
+                  key={bundle._id}
+                  href={`/bundles/${bundle.slug.current}`}
                   className="group bg-card relative flex flex-col overflow-hidden rounded-2xl border transition-all hover:shadow-xl sm:flex-row"
                 >
                   {/* Image Section */}
@@ -164,10 +164,10 @@ export default async function BundlesPage() {
                     {bundle.products && bundle.products.length > 0 && (
                       <div className="mt-4 flex -space-x-2">
                         {bundle.products.slice(0, 4).map((product, idx) => {
-                          const productImage = product.images?.[0]?.image?.url;
+                          const productImage = product.images?.[0]?.url;
                           return (
                             <div
-                              key={product.id}
+                              key={product._id}
                               className="border-background bg-muted relative h-8 w-8 overflow-hidden rounded-full border-2"
                               style={{ zIndex: 4 - idx }}
                             >

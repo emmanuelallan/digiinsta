@@ -31,7 +31,7 @@ export async function BundleShowcase({ className }: BundleShowcaseProps) {
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {bundles.map((bundle) => {
             const heroImageUrl = bundle.heroImage?.url;
-            const productCount = bundle.products.length;
+            const productCount = bundle.products?.length ?? 0;
             const hasDiscount =
               bundle.compareAtPrice && bundle.price && bundle.compareAtPrice > bundle.price;
             const savingsAmount = hasDiscount ? bundle.compareAtPrice! - bundle.price! : 0;
@@ -41,8 +41,8 @@ export async function BundleShowcase({ className }: BundleShowcaseProps) {
 
             return (
               <Link
-                key={bundle.id}
-                href={`/bundles/${bundle.slug}`}
+                key={bundle._id}
+                href={`/bundles/${bundle.slug.current}`}
                 className="group bg-card relative flex flex-col overflow-hidden rounded-2xl border transition-all hover:shadow-lg"
               >
                 {/* Hero Image */}
@@ -94,13 +94,13 @@ export async function BundleShowcase({ className }: BundleShowcaseProps) {
                   )}
 
                   {/* Product Thumbnails */}
-                  {bundle.products.length > 0 && (
+                  {bundle.products && bundle.products.length > 0 && (
                     <div className="mb-4 flex -space-x-2">
                       {bundle.products.slice(0, 4).map((product, idx) => {
-                        const productImage = product.images?.[0]?.image?.url;
+                        const productImage = product.images?.[0]?.url;
                         return (
                           <div
-                            key={product.id}
+                            key={product._id}
                             className="border-background bg-muted relative h-8 w-8 overflow-hidden rounded-full border-2"
                             style={{ zIndex: 4 - idx }}
                           >

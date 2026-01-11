@@ -6,8 +6,8 @@
 export interface CartItem {
   id: string; // Unique cart item ID
   type: "product" | "bundle";
-  productId?: number; // Payload product ID (for products)
-  bundleId?: number; // Payload bundle ID (for bundles)
+  productId?: string; // Sanity product ID (for products)
+  bundleId?: string; // Sanity bundle ID (for bundles)
   polarProductId: string; // Polar product ID for checkout
   title: string;
   price: number; // Price in cents
@@ -32,7 +32,7 @@ export interface CartContextType {
   addItem: (item: Omit<CartItem, "id" | "quantity">) => void;
   removeItem: (id: string) => void;
   clearCart: () => void;
-  isInCart: (productId: number, type: "product" | "bundle") => boolean;
+  isInCart: (productId: string, type: "product" | "bundle") => boolean;
   openCart: () => void;
   closeCart: () => void;
   toggleCart: () => void;
@@ -41,8 +41,8 @@ export interface CartContextType {
 export interface CheckoutPayload {
   items: Array<{
     polarProductId: string;
-    productId?: number;
-    bundleId?: number;
+    productId?: string;
+    bundleId?: string;
     type: "product" | "bundle";
   }>;
   metadata?: Record<string, string>;

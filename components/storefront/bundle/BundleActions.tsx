@@ -6,12 +6,12 @@ import { formatPrice, isOnSale, calculateSavingsPercent } from "@/lib/cart/utils
 
 interface BundleActionsProps {
   bundle: {
-    id: number;
+    id: string;
     title: string;
     price?: number;
     compareAtPrice?: number | null;
     polarProductId: string;
-    heroImage?: { url?: string | null } | null;
+    heroImageUrl?: string;
     productCount: number;
   };
 }
@@ -19,7 +19,6 @@ interface BundleActionsProps {
 export function BundleActions({ bundle }: BundleActionsProps) {
   const hasPrice = bundle.price && bundle.price > 0;
   const onSale = isOnSale(bundle.price ?? 0, bundle.compareAtPrice);
-  const heroImageUrl = bundle.heroImage?.url;
 
   if (!hasPrice) {
     return (
@@ -67,7 +66,7 @@ export function BundleActions({ bundle }: BundleActionsProps) {
             title: bundle.title,
             price: bundle.price!,
             compareAtPrice: bundle.compareAtPrice,
-            image: heroImageUrl ?? undefined,
+            image: bundle.heroImageUrl,
           }}
           size="lg"
           fullWidth

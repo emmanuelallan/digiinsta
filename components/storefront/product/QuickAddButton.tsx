@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 interface QuickAddButtonProps {
   product: {
-    id: number;
+    id: string;
     title: string;
     price: number;
     compareAtPrice?: number | null;

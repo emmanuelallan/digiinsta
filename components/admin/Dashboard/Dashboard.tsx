@@ -1,7 +1,7 @@
 /**
  * Dashboard Server Component
  * Main dashboard view that fetches initial data and composes all dashboard components
- * Requirements: 1.1, 1.5, 2.4
+ * Requirements: 6.4
  */
 
 import { getDashboardData, PARTNER_REVENUE_GOAL_CENTS } from "@/lib/analytics";
@@ -14,12 +14,10 @@ export interface DashboardProps {
 
 /**
  * Dashboard - Server component that fetches initial data
- * Defaults to "this-month" period on initial load (Requirement 2.4)
- * Updates data on each page load without manual refresh (Requirement 1.5)
+ * Defaults to "this-month" period on initial load
+ * Uses Neon PostgreSQL for transactional data
  */
-export async function Dashboard({
-  initialPeriod = "this-month",
-}: DashboardProps) {
+export async function Dashboard({ initialPeriod = "this-month" }: DashboardProps) {
   let initialData: DashboardData | null = null;
   let error: string | null = null;
 

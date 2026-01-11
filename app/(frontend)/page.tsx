@@ -6,6 +6,7 @@ import {
   NewArrivals,
   EditorsPick,
   BestSellers,
+  OnSale,
   BundleBanner,
   BundleShowcase,
 } from "@/components/storefront";
@@ -14,7 +15,7 @@ import {
   BundleBannerSkeleton,
   BundleShowcaseSkeleton,
 } from "@/components/storefront/shared";
-import { getCategoriesWithCounts, getBestSellers } from "@/lib/storefront";
+import { getCategoriesWithCounts, getBestSellers, getHeroSlides } from "@/lib/storefront";
 import { getProductListSchema, SITE_URL, SITE_NAME } from "@/lib/seo";
 
 export const metadata: Metadata = {
@@ -46,9 +47,10 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const [categories, bestSellerProducts] = await Promise.all([
+  const [categories, bestSellerProducts, heroSlides] = await Promise.all([
     getCategoriesWithCounts(),
     getBestSellers(8),
+    getHeroSlides(),
   ]);
 
   // Product list schema for best sellers
@@ -68,8 +70,8 @@ export default async function HomePage() {
       />
 
       <main className="flex flex-col">
-        {/* Hero Section */}
-        <HeroSection categories={categories} />
+        {/* Hero Section with Sanity slides */}
+        <HeroSection categories={categories} heroSlides={heroSlides} />
 
         {/* Best Sellers - between Hero and Persona */}
         <Suspense fallback={<ProductTraySkeleton className="py-16 lg:py-24" />}>
@@ -84,19 +86,24 @@ export default async function HomePage() {
           <NewArrivals className="py-16 lg:py-24" />
         </Suspense>
 
+        {/* On Sale Products */}
+        <Suspense fallback={<ProductTraySkeleton className="bg-muted/30 py-16 lg:py-24" />}>
+          <OnSale className="bg-muted/30 py-16 lg:py-24" />
+        </Suspense>
+
         {/* Bundle Promotion Banner */}
-        <Suspense fallback={<BundleBannerSkeleton className="bg-muted/30 py-16 lg:py-24" />}>
-          <BundleBanner className="bg-muted/30 py-16 lg:py-24" />
+        <Suspense fallback={<BundleBannerSkeleton className="py-16 lg:py-24" />}>
+          <BundleBanner className="py-16 lg:py-24" />
         </Suspense>
 
         {/* Editor's Pick */}
-        <Suspense fallback={<ProductTraySkeleton className="py-16 lg:py-24" />}>
-          <EditorsPick className="py-16 lg:py-24" />
+        <Suspense fallback={<ProductTraySkeleton className="bg-muted/30 py-16 lg:py-24" />}>
+          <EditorsPick className="bg-muted/30 py-16 lg:py-24" />
         </Suspense>
 
         {/* Bundle Showcase */}
-        <Suspense fallback={<BundleShowcaseSkeleton className="bg-muted/30 py-16 lg:py-24" />}>
-          <BundleShowcase className="bg-muted/30 py-16 lg:py-24" />
+        <Suspense fallback={<BundleShowcaseSkeleton className="py-16 lg:py-24" />}>
+          <BundleShowcase className="py-16 lg:py-24" />
         </Suspense>
       </main>
     </>

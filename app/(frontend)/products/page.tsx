@@ -19,7 +19,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { SITE_URL, SITE_NAME } from "@/lib/seo";
+import { SITE_URL, SITE_NAME } from "@/lib/seo/jsonld";
 
 export const metadata: Metadata = {
   title: "All Products | Digital Planners, Templates & Tools",
@@ -114,10 +114,10 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
                   </Link>
                   {categories.map((category) => (
                     <Link
-                      key={category.id}
-                      href={`/products?category=${category.slug}`}
+                      key={category._id}
+                      href={`/products?category=${category.slug.current}`}
                       className={`block rounded-lg px-3 py-2 text-sm transition-colors ${
-                        categorySlug === category.slug
+                        categorySlug === category.slug.current
                           ? "bg-primary text-primary-foreground font-medium"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}

@@ -40,7 +40,7 @@ export function PersonaCards({ className }: PersonaCardsProps) {
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3 lg:gap-8">
           {PERSONAS.map((persona) => {
-            const iconElement = personaIcons[persona.iconName] || GraduationCap;
+            const iconElement = personaIcons[persona.icon] || GraduationCap;
             const imageUrl = personaImages[persona.id] || persona.image;
 
             return (

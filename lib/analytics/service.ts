@@ -1,10 +1,10 @@
 /**
  * Analytics Service
  * Server-side functions for calculating and aggregating business metrics
+ * Uses Neon PostgreSQL for transactional data
  */
 
-import { getPayload } from "payload";
-import config from "@/payload.config";
+import { sql } from "@/lib/db/client";
 import type {
   TimePeriod,
   RevenueStats,
@@ -21,76 +21,56 @@ import { calculateGoalProgress, calculatePercentage } from "./currency-utils";
 
 /**
  * Get revenue statistics for a time period
- * Aggregates revenue by partner and calculates goal progress
+ * Aggregates revenue by creator and calculates goal progress
  *
  * @param period - Time period to calculate stats for
- * @returns Revenue statistics with partner breakdown
+ * @returns Revenue statistics with creator breakdown
  */
-export async function getRevenueStats(
-  period: TimePeriod,
-): Promise<RevenueStats> {
-  const payload = await getPayload({ config });
+export async function getRevenueStats(period: TimePeriod): Promise<RevenueStats> {
   const dateRange = getDateRangeForPeriod(period);
 
   // Query completed orders within the date range
-  const orders = await payload.find({
-    collection: "orders",
-    where: {
-      and: [
-        { status: { equals: "completed" } },
-        { createdAt: { greater_than_equal: dateRange.start.toISOString() } },
-        { createdAt: { less_than_equal: dateRange.end.toISOString() } },
-      ],
-    },
-    limit: 0, // Get all matching orders
-    depth: 1, // Include related user data
-  });
+  const ordersResult = await sql`
+    SELECT total_amount
+    FROM orders
+    WHERE status = 'completed'
+      AND created_at >= ${dateRange.start.toISOString()}
+      AND created_at <= ${dateRange.end.toISOString()}
+  `;
 
-  // Aggregate revenue by partner
-  const partnerMap = new Map<
-    string,
-    { email: string; name?: string; amount: number }
-  >();
+  // Calculate total revenue
   let totalRevenue = 0;
-
-  for (const order of orders.docs) {
-    const amount = order.totalAmount ?? 0;
-    totalRevenue += amount;
-
-    // Get partner info from createdBy relationship
-    const createdBy = order.createdBy;
-    if (createdBy && typeof createdBy === "object") {
-      const userId = String(createdBy.id);
-      const existing = partnerMap.get(userId);
-      if (existing) {
-        existing.amount += amount;
-      } else {
-        partnerMap.set(userId, {
-          email: createdBy.email ?? "unknown",
-          name: createdBy.name ?? undefined,
-          amount,
-        });
-      }
-    }
+  for (const row of ordersResult) {
+    totalRevenue += Number(row.total_amount) || 0;
   }
 
-  // Convert to PartnerRevenue array with percentages and goal progress
-  const byPartner: PartnerRevenue[] = Array.from(partnerMap.entries()).map(
-    ([userId, data]) => ({
-      userId,
-      email: data.email,
-      name: data.name,
-      amount: data.amount,
-      percentage: calculatePercentage(data.amount, totalRevenue),
-      goalProgress: calculateGoalProgress(
-        data.amount,
-        PARTNER_REVENUE_GOAL_CENTS,
-      ),
-    }),
-  );
+  // Query revenue by creator from order_items
+  const creatorRevenueResult = await sql`
+    SELECT 
+      oi.creator_sanity_id,
+      SUM(oi.price) as total_amount
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    WHERE o.status = 'completed'
+      AND o.created_at >= ${dateRange.start.toISOString()}
+      AND o.created_at <= ${dateRange.end.toISOString()}
+      AND oi.creator_sanity_id IS NOT NULL
+    GROUP BY oi.creator_sanity_id
+    ORDER BY total_amount DESC
+  `;
 
-  // Sort by amount descending
-  byPartner.sort((a, b) => b.amount - a.amount);
+  // Convert to PartnerRevenue array
+  const byPartner: PartnerRevenue[] = creatorRevenueResult.map((row) => {
+    const amount = Number(row.total_amount) || 0;
+    return {
+      userId: String(row.creator_sanity_id || "unknown"),
+      email: "creator",
+      name: undefined,
+      amount,
+      percentage: calculatePercentage(amount, totalRevenue),
+      goalProgress: calculateGoalProgress(amount, PARTNER_REVENUE_GOAL_CENTS),
+    };
+  });
 
   return {
     total: totalRevenue,
@@ -108,52 +88,53 @@ export async function getRevenueStats(
  * @returns Order statistics with status breakdown
  */
 export async function getOrderStats(period: TimePeriod): Promise<OrderStats> {
-  const payload = await getPayload({ config });
   const dateRange = getDateRangeForPeriod(period);
 
-  // Query all orders within the date range
-  const orders = await payload.find({
-    collection: "orders",
-    where: {
-      and: [
-        { createdAt: { greater_than_equal: dateRange.start.toISOString() } },
-        { createdAt: { less_than_equal: dateRange.end.toISOString() } },
-      ],
-    },
-    limit: 0, // Get all matching orders
-  });
+  // Query order counts by status
+  const statusResult = await sql`
+    SELECT 
+      status,
+      COUNT(*) as count,
+      SUM(CASE WHEN status = 'completed' THEN total_amount ELSE 0 END) as completed_revenue
+    FROM orders
+    WHERE created_at >= ${dateRange.start.toISOString()}
+      AND created_at <= ${dateRange.end.toISOString()}
+    GROUP BY status
+  `;
 
-  // Count by status
+  let total = 0;
   let completed = 0;
   let pending = 0;
   let failed = 0;
   let refunded = 0;
   let totalCompletedRevenue = 0;
 
-  for (const order of orders.docs) {
-    switch (order.status) {
+  for (const row of statusResult) {
+    const count = Number(row.count) || 0;
+    total += count;
+
+    switch (row.status) {
       case "completed":
-        completed++;
-        totalCompletedRevenue += order.totalAmount || 0;
+        completed = count;
+        totalCompletedRevenue = Number(row.completed_revenue) || 0;
         break;
       case "pending":
-        pending++;
+        pending = count;
         break;
       case "failed":
-        failed++;
+        failed = count;
         break;
       case "refunded":
-        refunded++;
+        refunded = count;
         break;
     }
   }
 
   // Calculate average order value (only from completed orders)
-  const averageOrderValue =
-    completed > 0 ? Math.round(totalCompletedRevenue / completed) : 0;
+  const averageOrderValue = completed > 0 ? Math.round(totalCompletedRevenue / completed) : 0;
 
   return {
-    total: orders.docs.length,
+    total,
     completed,
     pending,
     failed,
@@ -172,69 +153,35 @@ export async function getOrderStats(period: TimePeriod): Promise<OrderStats> {
  */
 export async function getTopProducts(
   period: TimePeriod,
-  limit: number = 5,
+  limit: number = 5
 ): Promise<ProductPerformance[]> {
-  const payload = await getPayload({ config });
   const dateRange = getDateRangeForPeriod(period);
 
-  // Query completed orders within the date range
-  const orders = await payload.find({
-    collection: "orders",
-    where: {
-      and: [
-        { status: { equals: "completed" } },
-        { createdAt: { greater_than_equal: dateRange.start.toISOString() } },
-        { createdAt: { less_than_equal: dateRange.end.toISOString() } },
-      ],
-    },
-    limit: 0,
-    depth: 2, // Include product/bundle relationships
-  });
+  // Query top products by revenue
+  const result = await sql`
+    SELECT 
+      oi.sanity_id as product_id,
+      oi.title,
+      oi.item_type,
+      COUNT(*) as units_sold,
+      SUM(oi.price) as revenue
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    WHERE o.status = 'completed'
+      AND o.created_at >= ${dateRange.start.toISOString()}
+      AND o.created_at <= ${dateRange.end.toISOString()}
+    GROUP BY oi.sanity_id, oi.title, oi.item_type
+    ORDER BY revenue DESC
+    LIMIT ${limit}
+  `;
 
-  // Aggregate sales by product/bundle
-  const productMap = new Map<string, ProductPerformance>();
-
-  for (const order of orders.docs) {
-    const items = order.items;
-    // Calculate per-item revenue (split order total evenly among items)
-    const itemCount = items.length || 1;
-    const perItemRevenue = Math.round((order.totalAmount ?? 0) / itemCount);
-
-    for (const item of items) {
-      const isBundle = item.type === "bundle";
-      const rawProductId = isBundle
-        ? typeof item.bundleId === "object"
-          ? item.bundleId?.id
-          : item.bundleId
-        : typeof item.productId === "object"
-          ? item.productId?.id
-          : item.productId;
-
-      if (!rawProductId) continue;
-      const productId = String(rawProductId);
-
-      const existing = productMap.get(productId);
-      if (existing) {
-        existing.unitsSold++;
-        existing.revenue += perItemRevenue;
-      } else {
-        productMap.set(productId, {
-          productId,
-          title: item.title ?? "Unknown Product",
-          unitsSold: 1,
-          revenue: perItemRevenue,
-          isBundle,
-        });
-      }
-    }
-  }
-
-  // Convert to array, sort by revenue descending, and limit
-  const products = Array.from(productMap.values())
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, limit);
-
-  return products;
+  return result.map((row) => ({
+    productId: String(row.product_id),
+    title: String(row.title || "Unknown Product"),
+    unitsSold: Number(row.units_sold) || 0,
+    revenue: Number(row.revenue) || 0,
+    isBundle: row.item_type === "bundle",
+  }));
 }
 
 /**
@@ -244,25 +191,29 @@ export async function getTopProducts(
  * @param limit - Maximum number of orders to return (default: 5)
  * @returns Array of recent orders
  */
-export async function getRecentOrders(
-  limit: number = 5,
-): Promise<RecentOrder[]> {
-  const payload = await getPayload({ config });
+export async function getRecentOrders(limit: number = 5): Promise<RecentOrder[]> {
+  const result = await sql`
+    SELECT 
+      id,
+      polar_order_id,
+      email,
+      total_amount,
+      currency,
+      status,
+      created_at
+    FROM orders
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `;
 
-  const orders = await payload.find({
-    collection: "orders",
-    sort: "-createdAt", // Sort by createdAt descending (newest first)
-    limit,
-  });
-
-  return orders.docs.map((order) => ({
-    id: String(order.id),
-    polarOrderId: order.polarOrderId,
-    email: order.email,
-    totalAmount: order.totalAmount ?? 0,
-    currency: order.currency ?? "USD",
-    status: order.status as RecentOrder["status"],
-    createdAt: order.createdAt,
+  return result.map((row) => ({
+    id: String(row.id),
+    polarOrderId: String(row.polar_order_id),
+    email: String(row.email),
+    totalAmount: Number(row.total_amount) || 0,
+    currency: String(row.currency || "USD"),
+    status: row.status as RecentOrder["status"],
+    createdAt: String(row.created_at),
   }));
 }
 
@@ -273,85 +224,46 @@ export async function getRecentOrders(
  * @param period - Time period to calculate stats for
  * @returns Download statistics with product breakdown
  */
-export async function getDownloadStats(
-  period: TimePeriod,
-): Promise<DownloadStats> {
-  const payload = await getPayload({ config });
+export async function getDownloadStats(period: TimePeriod): Promise<DownloadStats> {
   const dateRange = getDateRangeForPeriod(period);
 
-  // Query all orders within the date range (include all statuses for download tracking)
-  const orders = await payload.find({
-    collection: "orders",
-    where: {
-      and: [
-        { createdAt: { greater_than_equal: dateRange.start.toISOString() } },
-        { createdAt: { less_than_equal: dateRange.end.toISOString() } },
-      ],
-    },
-    limit: 0,
-  });
+  // Query download statistics
+  const result = await sql`
+    SELECT 
+      oi.sanity_id as product_id,
+      oi.title,
+      SUM(oi.downloads_used) as downloads
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    WHERE o.created_at >= ${dateRange.start.toISOString()}
+      AND o.created_at <= ${dateRange.end.toISOString()}
+      AND oi.downloads_used > 0
+    GROUP BY oi.sanity_id, oi.title
+    ORDER BY downloads DESC
+  `;
 
-  // Aggregate downloads by product
-  const productDownloads = new Map<
-    string,
-    { title: string; downloads: number }
-  >();
-  let totalDownloads = 0;
-  let ordersWithDownloads = 0;
+  // Calculate totals
+  const totalResult = await sql`
+    SELECT 
+      SUM(oi.downloads_used) as total_downloads,
+      COUNT(DISTINCT o.id) as orders_with_downloads
+    FROM order_items oi
+    JOIN orders o ON oi.order_id = o.id
+    WHERE o.created_at >= ${dateRange.start.toISOString()}
+      AND o.created_at <= ${dateRange.end.toISOString()}
+      AND oi.downloads_used > 0
+  `;
 
-  for (const order of orders.docs) {
-    const items = order.items;
-    let orderHasDownloads = false;
-
-    for (const item of items) {
-      const downloads = item.downloadsUsed ?? 0;
-      if (downloads > 0) {
-        orderHasDownloads = true;
-        totalDownloads += downloads;
-
-        const rawProductId =
-          item.type === "bundle"
-            ? typeof item.bundleId === "object"
-              ? item.bundleId?.id
-              : item.bundleId
-            : typeof item.productId === "object"
-              ? item.productId?.id
-              : item.productId;
-
-        if (rawProductId) {
-          const productId = String(rawProductId);
-          const existing = productDownloads.get(productId);
-          if (existing) {
-            existing.downloads += downloads;
-          } else {
-            productDownloads.set(productId, {
-              title: item.title ?? "Unknown Product",
-              downloads,
-            });
-          }
-        }
-      }
-    }
-
-    if (orderHasDownloads) {
-      ordersWithDownloads++;
-    }
-  }
-
-  // Calculate average downloads per order
+  const totalDownloads = Number(totalResult[0]?.total_downloads) || 0;
+  const ordersWithDownloads = Number(totalResult[0]?.orders_with_downloads) || 0;
   const averagePerOrder =
-    ordersWithDownloads > 0
-      ? Math.round((totalDownloads / ordersWithDownloads) * 100) / 100
-      : 0;
+    ordersWithDownloads > 0 ? Math.round((totalDownloads / ordersWithDownloads) * 100) / 100 : 0;
 
-  // Convert to array sorted by downloads descending
-  const byProduct = Array.from(productDownloads.entries())
-    .map(([productId, data]) => ({
-      productId,
-      title: data.title,
-      downloads: data.downloads,
-    }))
-    .sort((a, b) => b.downloads - a.downloads);
+  const byProduct = result.map((row) => ({
+    productId: String(row.product_id),
+    title: String(row.title || "Unknown Product"),
+    downloads: Number(row.downloads) || 0,
+  }));
 
   return {
     totalDownloads,
@@ -367,18 +279,15 @@ export async function getDownloadStats(
  * @param period - Time period to calculate stats for
  * @returns Complete dashboard data
  */
-export async function getDashboardData(
-  period: TimePeriod,
-): Promise<DashboardData> {
+export async function getDashboardData(period: TimePeriod): Promise<DashboardData> {
   // Fetch all data in parallel for better performance
-  const [revenue, orders, topProducts, recentOrders, downloads] =
-    await Promise.all([
-      getRevenueStats(period),
-      getOrderStats(period),
-      getTopProducts(period, 5),
-      getRecentOrders(5),
-      getDownloadStats(period),
-    ]);
+  const [revenue, orders, topProducts, recentOrders, downloads] = await Promise.all([
+    getRevenueStats(period),
+    getOrderStats(period),
+    getTopProducts(period, 5),
+    getRecentOrders(5),
+    getDownloadStats(period),
+  ]);
 
   return {
     revenue,

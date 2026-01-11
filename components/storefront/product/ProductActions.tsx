@@ -6,13 +6,13 @@ import { formatPrice, isOnSale, calculateSavingsPercent } from "@/lib/cart/utils
 
 interface ProductActionsProps {
   product: {
-    id: number;
+    id: string;
     title: string;
     price?: number;
     compareAtPrice?: number | null;
     polarProductId: string;
     images?: Array<{
-      image: { url?: string | null };
+      image?: { url?: string | null } | null;
       alt?: string | null;
     }> | null;
   };

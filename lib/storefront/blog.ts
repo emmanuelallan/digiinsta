@@ -1,66 +1,68 @@
 /**
  * Blog Data Fetching Utilities
- * Server-side functions for fetching blog posts from Payload CMS
+ * Server-side functions for fetching blog posts from Sanity CMS
+ *
+ * Requirements: 7.3, 7.4 - Blog data fetching with category filtering
  */
 
-import { getPayload } from "payload";
-import config from "@payload-config";
-import type { Post, Media, Category, User } from "@/payload-types";
+import {
+  getAllPosts as sanityGetAllPosts,
+  getPostBySlug as sanityGetPostBySlug,
+  getPostsByCategorySlug,
+  getAllPostCategories as sanityGetAllPostCategories,
+  getRecentPosts as sanityGetRecentPosts,
+  getRelatedPosts as sanityGetRelatedPosts,
+  type SanityPost,
+  type SanityPostCategory,
+} from "@/lib/sanity/queries/posts";
+import { urlFor } from "@/lib/sanity/image";
+import type { StorefrontPostCategory } from "@/types/storefront";
+import type { BlockContent, SanityImage } from "@/types/sanity";
+
+// ISR revalidation time in seconds (5 minutes)
+export const BLOG_REVALIDATE = 300;
+
+/**
+ * Blog post author information
+ */
+export interface BlogPostAuthor {
+  name: string | null;
+}
 
 /**
  * Blog post with populated relations for display
  */
 export interface BlogPost {
-  id: number;
+  id: string;
   title: string;
   slug: string;
-  content: Post["content"];
+  content: BlockContent;
   excerpt?: string | null;
-  featuredImage?: Media | null;
-  category?: Category | null;
-  author: {
-    id: number;
-    name?: string | null;
-    email: string;
-  };
-  status: Post["status"];
+  /** Original Sanity image reference */
+  coverImage?: SanityImage | null;
+  /** Transformed image with URL for display */
+  featuredImage?: {
+    url: string;
+    alt?: string;
+  } | null;
+  category?: {
+    id: string;
+    title: string;
+    slug: string;
+  } | null;
+  author: BlogPostAuthor;
+  publishedAt?: string | null;
+  status: "published" | "draft" | "archived";
   createdAt: string;
   updatedAt: string;
-}
-
-/**
- * Get Payload instance
- */
-async function getPayloadClient() {
-  return getPayload({ config });
-}
-
-/**
- * Transform Payload post to blog post
- */
-function transformPost(post: Post): BlogPost {
-  const author = post.createdBy as User;
-  return {
-    id: post.id,
-    title: post.title,
-    slug: post.slug,
-    content: post.content,
-    excerpt: post.excerpt,
-    featuredImage: post.featuredImage as Media | null,
-    category: post.category as Category | null,
-    author: {
-      id: author.id,
-      name: author.name,
-      email: author.email,
-    },
-    status: post.status,
-    createdAt: post.createdAt,
-    updatedAt: post.updatedAt,
-  };
+  /** SEO fields */
+  metaTitle?: string | null;
+  metaDescription?: string | null;
 }
 
 /**
  * Get all published blog posts
+ * Requirements: 7.3 - SEO-friendly URLs
  */
 export async function getBlogPosts(options?: {
   limit?: number;
@@ -71,150 +73,138 @@ export async function getBlogPosts(options?: {
   totalDocs: number;
   totalPages: number;
 }> {
-  const payload = await getPayloadClient();
-  const { limit = 12, page = 1, categorySlug } = options ?? {};
+  const { categorySlug } = options ?? {};
 
-  const where: Record<string, unknown> = {
-    status: { equals: "published" },
-  };
+  let posts: SanityPost[];
 
-  // Filter by category if provided
   if (categorySlug) {
-    const category = await payload.find({
-      collection: "categories",
-      where: { slug: { equals: categorySlug } },
-      limit: 1,
-    });
-    if (category.docs[0]) {
-      where["category"] = { equals: category.docs[0].id };
-    }
+    const result = await getPostsByCategorySlug(categorySlug);
+    posts = result.posts;
+  } else {
+    posts = await sanityGetAllPosts();
   }
 
-  const result = await payload.find({
-    collection: "posts",
-    where: where as Parameters<typeof payload.find>[0]["where"],
-    limit,
-    page,
-    sort: "-createdAt",
-    depth: 2,
-  });
+  const transformedPosts = posts.map(transformPost);
 
   return {
-    posts: result.docs.map(transformPost),
-    totalDocs: result.totalDocs,
-    totalPages: result.totalPages,
+    posts: transformedPosts,
+    totalDocs: transformedPosts.length,
+    totalPages: 1,
   };
 }
 
 /**
  * Get a single blog post by slug
+ * Requirements: 7.3 - SEO-friendly URLs
  */
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
-  const payload = await getPayloadClient();
-
-  const result = await payload.find({
-    collection: "posts",
-    where: {
-      slug: { equals: slug },
-      status: { equals: "published" },
-    },
-    limit: 1,
-    depth: 2,
-  });
-
-  if (!result.docs[0]) return null;
-  return transformPost(result.docs[0]);
+  const post = await sanityGetPostBySlug(slug);
+  if (!post) return null;
+  return transformPost(post);
 }
 
 /**
  * Get recent blog posts
  */
 export async function getRecentPosts(limit = 5): Promise<BlogPost[]> {
-  const payload = await getPayloadClient();
-
-  const result = await payload.find({
-    collection: "posts",
-    where: { status: { equals: "published" } },
-    sort: "-createdAt",
-    limit,
-    depth: 2,
-  });
-
-  return result.docs.map(transformPost);
+  const posts = await sanityGetRecentPosts(limit);
+  return posts.map(transformPost);
 }
 
 /**
  * Get related posts (same category, excluding current post)
  */
 export async function getRelatedPosts(
-  postId: number,
-  categoryId: number | null,
+  postId: string,
+  categoryId: string | null,
   limit = 3
 ): Promise<BlogPost[]> {
-  const payload = await getPayloadClient();
-
-  const where: Record<string, unknown> = {
-    status: { equals: "published" },
-    id: { not_equals: postId },
-  };
-
-  if (categoryId) {
-    where["category"] = { equals: categoryId };
-  }
-
-  const result = await payload.find({
-    collection: "posts",
-    where: where as Parameters<typeof payload.find>[0]["where"],
-    sort: "-createdAt",
-    limit,
-    depth: 2,
-  });
-
-  return result.docs.map(transformPost);
+  if (!categoryId) return [];
+  const posts = await sanityGetRelatedPosts(categoryId, postId, limit);
+  return posts.map(transformPost);
 }
 
 /**
  * Get featured/latest post for hero
  */
 export async function getFeaturedPost(): Promise<BlogPost | null> {
-  const payload = await getPayloadClient();
-
-  const result = await payload.find({
-    collection: "posts",
-    where: { status: { equals: "published" } },
-    sort: "-createdAt",
-    limit: 1,
-    depth: 2,
-  });
-
-  if (!result.docs[0]) return null;
-  return transformPost(result.docs[0]);
+  const posts = await sanityGetRecentPosts(1);
+  if (posts.length === 0) return null;
+  const firstPost = posts[0];
+  if (!firstPost) return null;
+  return transformPost(firstPost);
 }
 
 /**
  * Get all categories that have published posts
+ * Requirements: 7.4 - Support filtering by category
  */
-export async function getBlogCategories(): Promise<Category[]> {
-  const payload = await getPayloadClient();
+export async function getBlogCategories(): Promise<StorefrontPostCategory[]> {
+  const categories = await sanityGetAllPostCategories();
+  return categories.map(transformCategory);
+}
 
-  // Get all published posts with categories
-  const posts = await payload.find({
-    collection: "posts",
-    where: {
-      status: { equals: "published" },
-      category: { exists: true },
-    },
-    depth: 1,
-  });
+// ============================================================================
+// Transform Functions
+// ============================================================================
 
-  // Extract unique categories
-  const categoryMap = new Map<number, Category>();
-  for (const post of posts.docs) {
-    const category = post.category as Category | null;
-    if (category && !categoryMap.has(category.id)) {
-      categoryMap.set(category.id, category);
-    }
+/**
+ * Generate image URL from Sanity image reference
+ */
+function getImageUrl(image: SanityImage | null | undefined): string | null {
+  if (!image?.asset?._ref) return null;
+  try {
+    return urlFor(image).width(1200).height(630).url();
+  } catch {
+    return null;
   }
+}
 
-  return Array.from(categoryMap.values());
+/**
+ * Transform Sanity post to blog post
+ */
+function transformPost(post: SanityPost): BlogPost {
+  const imageUrl = getImageUrl(post.coverImage);
+
+  return {
+    id: post._id,
+    title: post.title,
+    slug: post.slug,
+    content: post.content as BlockContent,
+    excerpt: post.excerpt,
+    coverImage: post.coverImage,
+    featuredImage: imageUrl ? { url: imageUrl, alt: post.title } : null,
+    category: post.category
+      ? {
+          id: post.category._id,
+          title: post.category.title,
+          slug: post.category.slug,
+        }
+      : null,
+    author: { name: post.author ?? null },
+    publishedAt: post.publishedAt,
+    status: post.status ?? "draft",
+    createdAt: post._createdAt,
+    updatedAt: post._updatedAt,
+    metaTitle: post.metaTitle,
+    metaDescription: post.metaDescription,
+  };
+}
+
+/**
+ * Transform Sanity post category to storefront post category
+ */
+function transformCategory(category: SanityPostCategory): StorefrontPostCategory {
+  return {
+    _id: category._id,
+    _type: "postCategory",
+    _createdAt: "",
+    _updatedAt: "",
+    _rev: "",
+    title: category.title,
+    slug: { _type: "slug", current: category.slug },
+    description: category.description,
+    displayOrder: category.displayOrder,
+    postCount: category.postCount,
+  };
 }

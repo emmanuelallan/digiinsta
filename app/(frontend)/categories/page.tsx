@@ -3,7 +3,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { getCategoriesWithCounts } from "@/lib/storefront";
 import { NoCategoriesFound } from "@/components/storefront/shared";
-import { SITE_URL, SITE_NAME } from "@/lib/seo";
+import { SITE_URL, SITE_NAME } from "@/lib/seo/jsonld";
+import { urlFor } from "@/lib/sanity/image";
 
 export const metadata: Metadata = {
   title: "All Categories | Browse Digital Products",
@@ -52,15 +53,14 @@ export default async function CategoriesPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
             {categories.map((category) => {
-              const imageUrl =
-                typeof category.image === "object" && category.image?.url
-                  ? category.image.url
-                  : null;
+              const imageUrl = category.image
+                ? urlFor(category.image).width(600).height(800).url()
+                : null;
 
               return (
                 <Link
-                  key={category.id}
-                  href={`/categories/${category.slug}`}
+                  key={category._id}
+                  href={`/categories/${category.slug.current}`}
                   className="group block"
                 >
                   <div className="relative aspect-[3/4] overflow-hidden rounded-xl">

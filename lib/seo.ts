@@ -1,9 +1,22 @@
-import type {
-  GenerateTitle,
-  GenerateDescription,
-  GenerateImage,
-  GenerateURL,
-} from "@payloadcms/plugin-seo/types";
+/**
+ * Type definitions for SEO generation functions
+ * (Previously imported from @payloadcms/plugin-seo/types)
+ */
+interface DocWithFields {
+  title?: string;
+  shortDescription?: string;
+  excerpt?: string;
+  featuredImage?: string | { id: string };
+  heroImage?: string | { id: string };
+  images?: Array<{ image?: string | { id: string } }>;
+  slug?: string;
+}
+
+type GenerateTitle = (args: { doc: DocWithFields }) => string;
+type GenerateDescription = (args: { doc: DocWithFields }) => string;
+type GenerateImage = (args: { doc: DocWithFields }) => string;
+type GenerateURL = (args: { doc: DocWithFields; collectionSlug?: string }) => string;
+
 import type { Metadata } from "next";
 
 /**
@@ -290,7 +303,7 @@ export function getProductListSchema(
     title: string;
     slug: string;
     price?: number;
-    images?: Array<{ image?: { url?: string | null } }> | null;
+    images?: Array<{ url?: string | null }> | null;
   }>,
   listName: string
 ) {
@@ -306,7 +319,7 @@ export function getProductListSchema(
         "@type": "Product",
         name: product.title,
         url: `${SITE_URL}/products/${product.slug}`,
-        image: product.images?.[0]?.image?.url ?? DEFAULT_OG_IMAGE,
+        image: product.images?.[0]?.url ?? DEFAULT_OG_IMAGE,
         offers: {
           "@type": "Offer",
           price: product.price ? (product.price / 100).toFixed(2) : "0.00",
@@ -420,7 +433,7 @@ export function getOfferCatalogSchema(
     title: string;
     slug: string;
     price?: number;
-    images?: Array<{ image?: { url?: string | null } }> | null;
+    images?: Array<{ url?: string | null }> | null;
   }>
 ) {
   return {
@@ -436,7 +449,7 @@ export function getOfferCatalogSchema(
         "@type": "Product",
         name: product.title,
         url: `${SITE_URL}/products/${product.slug}`,
-        image: product.images?.[0]?.image?.url ?? DEFAULT_OG_IMAGE,
+        image: product.images?.[0]?.url ?? DEFAULT_OG_IMAGE,
         offers: {
           "@type": "Offer",
           price: product.price ? (product.price / 100).toFixed(2) : "0.00",
