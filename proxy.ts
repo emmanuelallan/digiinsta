@@ -15,7 +15,7 @@ import type { NextRequest } from "next/server";
 const SESSION_COOKIE_NAME = "admin-session";
 
 /** Protected routes that require authentication */
-const PROTECTED_ROUTES = ["/dashboard", "/creators"];
+const PROTECTED_ROUTES = ["/dashboard", "/creators", "/upload"];
 
 /** Auth routes that should redirect if authenticated */
 const AUTH_ROUTES = ["/login"];
@@ -87,6 +87,7 @@ export const config = {
     // Protected admin routes
     "/dashboard/:path*",
     "/creators/:path*",
+    "/upload/:path*",
     // Auth routes
     "/login/:path*",
   ],

@@ -15,6 +15,7 @@ import { usePathname } from "next/navigation";
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/creators", label: "Creators" },
+  { href: "/upload", label: "Upload" },
 ];
 
 export function AdminNav() {
