@@ -118,29 +118,29 @@ export async function getHeroSlides(): Promise<HeroSlide[]> {
   if (!slides || slides.length === 0) {
     // Return a default slide if no slides are configured
     return [
-      {
-        id: "default",
-        title: "Welcome to DigiInsta",
-        headline: "Professional Digital Planners & Finance Tools",
-        subheadline:
-          "Elevate your life with expert-led student planners, couples finance tools, and SME systems engineered for productivity.",
-        image: {
-          url: "/images/bgs/hero.webp",
-          alt: "DigiInsta Hero",
-        },
-        primaryCta: {
-          label: "Shop Now",
-          href: "/categories",
-        },
-        secondaryCta: {
-          label: "View All Products",
-          href: "/products",
-        },
-        textPosition: "left",
-        textColor: "white",
-        overlayOpacity: 40,
-        displayOrder: 0,
-      },
+      // {
+      //   id: "default",
+      //   title: "Welcome to DigiInsta",
+      //   headline: "Professional Digital Planners & Finance Tools",
+      //   subheadline:
+      //     "Elevate your life with expert-led student planners, couples finance tools, and SME systems engineered for productivity.",
+      //   image: {
+      //     url: "/images/bgs/hero.webp",
+      //     alt: "DigiInsta Hero",
+      //   },
+      //   primaryCta: {
+      //     label: "Shop Now",
+      //     href: "/categories",
+      //   },
+      //   secondaryCta: {
+      //     label: "View All Products",
+      //     href: "/products",
+      //   },
+      //   textPosition: "left",
+      //   textColor: "white",
+      //   overlayOpacity: 40,
+      //   displayOrder: 0,
+      // },
     ];
   }
 

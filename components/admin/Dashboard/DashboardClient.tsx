@@ -15,6 +15,7 @@ import { TopProductsTable } from "./TopProductsTable";
 import { RecentOrdersList } from "./RecentOrdersList";
 import { DownloadStats } from "./DownloadStats";
 import { PeriodSelector } from "./PeriodSelector";
+import { Button } from "@/components/ui/button";
 
 export interface DashboardClientProps {
   initialData: DashboardData | null;
@@ -67,14 +68,16 @@ export function DashboardClient({
   // Error state
   if (error && !data) {
     return (
-      <div className="admin-dashboard">
-        <div className="admin-dashboard__header">
-          <h1 className="admin-dashboard__title">Revenue Dashboard</h1>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">Revenue Dashboard</h1>
           <PeriodSelector value={period} onChange={handlePeriodChange} />
         </div>
-        <div className="admin-dashboard__error">
-          <p>{error}</p>
-          <button onClick={handleRetry}>Retry</button>
+        <div className="border-destructive/50 bg-destructive/10 flex flex-col items-center justify-center rounded-lg border p-8 text-center">
+          <p className="text-destructive">{error}</p>
+          <Button variant="outline" onClick={handleRetry} className="mt-4">
+            Retry
+          </Button>
         </div>
       </div>
     );
@@ -83,56 +86,54 @@ export function DashboardClient({
   // Loading state (only show if no data at all)
   if (!data) {
     return (
-      <div className="admin-dashboard">
-        <div className="admin-dashboard__header">
-          <h1 className="admin-dashboard__title">Revenue Dashboard</h1>
+      <div className="space-y-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-2xl font-bold tracking-tight">Revenue Dashboard</h1>
           <PeriodSelector value={period} onChange={handlePeriodChange} />
         </div>
-        <div className="admin-dashboard__loading">Loading dashboard data...</div>
+        <div className="bg-muted/50 flex items-center justify-center rounded-lg border p-8">
+          <p className="text-muted-foreground">Loading dashboard data...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="admin-dashboard">
-      <div className="admin-dashboard__header">
-        <h1 className="admin-dashboard__title">Revenue Dashboard</h1>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold tracking-tight">Revenue Dashboard</h1>
         <PeriodSelector value={period} onChange={handlePeriodChange} />
       </div>
 
-      {isPending && <div className="admin-dashboard__loading-overlay">Updating...</div>}
-
-      <div className="admin-dashboard__grid">
-        {/* Revenue Card - spans 4 columns */}
-        <div className="admin-dashboard__col admin-dashboard__col--4">
-          <RevenueCard revenue={data.revenue} />
+      {isPending && (
+        <div className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+          <div className="bg-card rounded-lg p-4 shadow-lg">
+            <p className="text-muted-foreground text-sm">Updating...</p>
+          </div>
         </div>
+      )}
 
-        {/* Orders Card - spans 4 columns */}
-        <div className="admin-dashboard__col admin-dashboard__col--4">
-          <OrdersCard orders={data.orders} />
-        </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Revenue Card */}
+        <RevenueCard revenue={data.revenue} />
 
-        {/* Goal Progress Card - spans 4 columns */}
-        <div className="admin-dashboard__col admin-dashboard__col--4">
-          <GoalProgressCard partners={data.revenue.byPartner} goalAmount={goalAmount} />
-        </div>
+        {/* Orders Card */}
+        <OrdersCard orders={data.orders} />
 
-        {/* Top Products Table - spans 6 columns */}
-        <div className="admin-dashboard__col admin-dashboard__col--6">
-          <TopProductsTable products={data.topProducts} />
-        </div>
-
-        {/* Recent Orders List - spans 6 columns */}
-        <div className="admin-dashboard__col admin-dashboard__col--6">
-          <RecentOrdersList orders={data.recentOrders} />
-        </div>
-
-        {/* Download Stats - spans 12 columns (full width) */}
-        <div className="admin-dashboard__col admin-dashboard__col--12">
-          <DownloadStats downloads={data.downloads} />
-        </div>
+        {/* Goal Progress Card */}
+        <GoalProgressCard partners={data.revenue.byPartner} goalAmount={goalAmount} />
       </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Top Products Table */}
+        <TopProductsTable products={data.topProducts} />
+
+        {/* Recent Orders List */}
+        <RecentOrdersList orders={data.recentOrders} />
+      </div>
+
+      {/* Download Stats - Full width */}
+      <DownloadStats downloads={data.downloads} />
     </div>
   );
 }

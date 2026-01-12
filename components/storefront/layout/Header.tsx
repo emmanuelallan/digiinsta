@@ -79,6 +79,7 @@ export function Header({ categories }: HeaderProps) {
                   width={90}
                   height={48}
                   className="h-[50px] w-auto"
+                  style={{ height: "50px", width: "auto" }}
                   priority
                 />
               </Link>
@@ -131,6 +132,7 @@ export function Header({ categories }: HeaderProps) {
                   width={70}
                   height={38}
                   className="h-[38px] w-auto"
+                  style={{ height: "38px", width: "auto" }}
                 />
               </Link>
             </div>

@@ -26,13 +26,13 @@ export function PeriodSelector({ value, onChange }: PeriodSelectorProps) {
   };
 
   return (
-    <div className="period-selector">
-      <label htmlFor="period-select" className="period-selector__label">
+    <div className="flex items-center gap-2">
+      <label htmlFor="period-select" className="text-muted-foreground text-sm font-medium">
         Time Period
       </label>
       <select
         id="period-select"
-        className="period-selector__select"
+        className="border-input bg-background focus-visible:ring-ring h-9 rounded-md border px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:outline-none"
         value={value}
         onChange={handleChange}
       >

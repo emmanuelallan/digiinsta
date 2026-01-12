@@ -95,7 +95,7 @@ export function HeroSection({ categories, heroSlides = [] }: HeroSectionProps) {
             <CarouselContent>
               {heroSlides.map((slide) => (
                 <CarouselItem key={slide.id} className="relative">
-                  <div className="relative h-[400px] w-full sm:h-[500px] lg:h-[600px]">
+                  <div className="relative h-[250px] w-full sm:h-[200px] lg:h-[350px]">
                     {/* Background Image */}
                     <Image
                       src={slide.image.url}
@@ -123,13 +123,13 @@ export function HeroSection({ categories, heroSlides = [] }: HeroSectionProps) {
                     >
                       <div
                         className={cn(
-                          "max-w-2xl px-6 sm:px-12 lg:px-16",
+                          "max-w-2xl px-4 sm:px-8 lg:px-12",
                           slide.textPosition === "center" && "mx-auto"
                         )}
                       >
                         <h1
                           className={cn(
-                            "mb-4 text-3xl leading-tight font-bold sm:text-4xl lg:text-5xl xl:text-6xl",
+                            "mb-2 text-2xl leading-tight font-bold sm:text-3xl lg:text-4xl",
                             slide.textColor === "white" ? "text-white" : "text-gray-900"
                           )}
                         >
@@ -138,16 +138,16 @@ export function HeroSection({ categories, heroSlides = [] }: HeroSectionProps) {
                         {slide.subheadline && (
                           <p
                             className={cn(
-                              "mb-6 max-w-xl text-base sm:mb-8 sm:text-lg lg:text-xl",
+                              "mb-4 max-w-lg text-sm sm:mb-5 sm:text-base lg:text-lg",
                               slide.textColor === "white" ? "text-white/90" : "text-gray-700"
                             )}
                           >
                             {slide.subheadline}
                           </p>
                         )}
-                        <div className="flex flex-wrap gap-3 sm:gap-4">
+                        <div className="flex flex-wrap gap-2 sm:gap-3">
                           {slide.primaryCta && (
-                            <Button asChild size="lg" className="px-6 text-base sm:px-8 sm:text-lg">
+                            <Button asChild size="default" className="px-5 text-sm sm:px-6">
                               <Link href={slide.primaryCta.href}>{slide.primaryCta.label}</Link>
                             </Button>
                           )}
@@ -155,9 +155,9 @@ export function HeroSection({ categories, heroSlides = [] }: HeroSectionProps) {
                             <Button
                               asChild
                               variant="outline"
-                              size="lg"
+                              size="default"
                               className={cn(
-                                "px-6 text-base sm:px-8 sm:text-lg",
+                                "px-5 text-sm sm:px-6",
                                 slide.textColor === "white" &&
                                   "border-white text-white hover:bg-white/10"
                               )}
@@ -176,8 +176,8 @@ export function HeroSection({ categories, heroSlides = [] }: HeroSectionProps) {
             {/* Navigation Buttons - Desktop only */}
             {heroSlides.length > 1 && (
               <>
-                <CarouselPrevious className="left-4 hidden h-10 w-10 border-white/30 bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 sm:flex sm:h-12 sm:w-12" />
-                <CarouselNext className="right-4 hidden h-10 w-10 border-white/30 bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 sm:flex sm:h-12 sm:w-12" />
+                <CarouselPrevious className="left-2 hidden h-8 w-8 border-white/30 bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 sm:left-4 sm:flex sm:h-10 sm:w-10" />
+                <CarouselNext className="right-2 hidden h-8 w-8 border-white/30 bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 sm:right-4 sm:flex sm:h-10 sm:w-10" />
               </>
             )}
           </Carousel>
@@ -262,6 +262,7 @@ export function HeroSection({ categories, heroSlides = [] }: HeroSectionProps) {
                               src={`https://cdn.sanity.io/images/${process.env.NEXT_PUBLIC_SANITY_PROJECT_ID}/${process.env.NEXT_PUBLIC_SANITY_DATASET}/${imageUrl.replace("image-", "").replace("-webp", ".webp").replace("-jpg", ".jpg").replace("-png", ".png")}`}
                               alt={category.title}
                               fill
+                              sizes="(max-width: 640px) 85vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
                               className="object-cover transition-transform duration-500 group-hover:scale-105"
                             />
                           ) : (
