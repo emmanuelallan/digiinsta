@@ -1,11 +1,13 @@
 import { createClient } from "@sanity/client";
 
-// Read client with CDN for public content
+// Read client - disable CDN to always get fresh data
+// CDN caching causes stale content issues after publishing in Sanity
 export const sanityClient = createClient({
   projectId: process.env.NEXT_PUBLIC_SANITY_PROJECT_ID!,
   dataset: process.env.NEXT_PUBLIC_SANITY_DATASET!,
   apiVersion: "2024-01-01",
-  useCdn: true, // Use CDN for read operations
+  useCdn: false, // Disable CDN to avoid stale data
+  perspective: "published", // Only fetch published documents
 });
 
 // Write client for mutations (server-side only)

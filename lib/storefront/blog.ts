@@ -183,7 +183,7 @@ function transformPost(post: SanityPost): BlogPost {
       : null,
     author: { name: post.author ?? null },
     publishedAt: post.publishedAt,
-    status: post.status ?? "draft",
+    status: post.publishedAt ? "published" : "draft",
     createdAt: post._createdAt,
     updatedAt: post._updatedAt,
     metaTitle: post.metaTitle,

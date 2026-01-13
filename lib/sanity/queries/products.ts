@@ -2,6 +2,14 @@ import { sanityClient } from "../client";
 import { groq } from "next-sanity";
 import type { SanityImage } from "./categories";
 
+/**
+ * Product Queries
+ *
+ * Note: We use Sanity's native draft/published system instead of a custom status field.
+ * The sanityClient is configured with `perspective: "published"` which only returns
+ * published documents. Draft documents are automatically filtered out.
+ */
+
 // Base product fields projection with subcategory expansion for price resolution
 const productFields = groq`
   _id,
@@ -18,7 +26,6 @@ const productFields = groq`
   productFileKey,
   productFileName,
   productFileSize,
-  status,
   tags,
   metaTitle,
   metaDescription,
@@ -38,8 +45,7 @@ const productFields = groq`
     _id,
     name,
     "slug": slug.current,
-    bio,
-    status
+    bio
   },
   "targetGroups": targetGroups[]->{
     _id,
@@ -48,23 +54,23 @@ const productFields = groq`
   }
 `;
 
-// Get all active products
+// Get all products (published only via client perspective)
 export const getAllProductsQuery = groq`
-  *[_type == "product" && status == "active"] | order(_createdAt desc) {
+  *[_type == "product" && defined(subcategory)] | order(_createdAt desc) {
     ${productFields}
   }
 `;
 
 // Get products with pagination
 export const getProductsPaginatedQuery = groq`
-  *[_type == "product" && status == "active"] | order(_createdAt desc) [$start...$end] {
+  *[_type == "product" && defined(subcategory)] | order(_createdAt desc) [$start...$end] {
     ${productFields}
   }
 `;
 
 // Get total product count
 export const getProductCountQuery = groq`
-  count(*[_type == "product" && status == "active"])
+  count(*[_type == "product" && defined(subcategory)])
 `;
 
 // Get a single product by slug
@@ -76,49 +82,49 @@ export const getProductBySlugQuery = groq`
 
 // Get products by subcategory slug
 export const getProductsBySubcategorySlugQuery = groq`
-  *[_type == "product" && subcategory->slug.current == $subcategorySlug && status == "active"] | order(_createdAt desc) {
+  *[_type == "product" && subcategory->slug.current == $subcategorySlug && defined(subcategory)] | order(_createdAt desc) {
     ${productFields}
   }
 `;
 
 // Get products by category slug
 export const getProductsByCategorySlugQuery = groq`
-  *[_type == "product" && subcategory->category->slug.current == $categorySlug && status == "active"] | order(_createdAt desc) {
+  *[_type == "product" && subcategory->category->slug.current == $categorySlug && defined(subcategory)] | order(_createdAt desc) {
     ${productFields}
   }
 `;
 
 // Get products by target group slug
 export const getProductsByTargetGroupSlugQuery = groq`
-  *[_type == "product" && status == "active" && $targetGroupSlug in targetGroups[]->slug.current] | order(_createdAt desc) {
+  *[_type == "product" && defined(subcategory) && $targetGroupSlug in targetGroups[]->slug.current] | order(_createdAt desc) {
     ${productFields}
   }
 `;
 
 // Get products by tag
 export const getProductsByTagQuery = groq`
-  *[_type == "product" && status == "active" && $tagValue in tags] | order(_createdAt desc) {
+  *[_type == "product" && defined(subcategory) && $tagValue in tags] | order(_createdAt desc) {
     ${productFields}
   }
 `;
 
 // Get products by multiple tags (any match)
 export const getProductsByTagsQuery = groq`
-  *[_type == "product" && status == "active" && count((tags)[@ in $tags]) > 0] | order(_createdAt desc) {
+  *[_type == "product" && defined(subcategory) && count((tags)[@ in $tags]) > 0] | order(_createdAt desc) {
     ${productFields}
   }
 `;
 
 // Get products by creator slug
 export const getProductsByCreatorSlugQuery = groq`
-  *[_type == "product" && creator->slug.current == $creatorSlug && status == "active"] | order(_createdAt desc) {
+  *[_type == "product" && creator->slug.current == $creatorSlug && defined(subcategory)] | order(_createdAt desc) {
     ${productFields}
   }
 `;
 
 // Get products on sale (compareAtPrice > effective price)
 export const getProductsOnSaleQuery = groq`
-  *[_type == "product" && status == "active" && (
+  *[_type == "product" && defined(subcategory) && (
     (defined(customPrice) && defined(compareAtPrice) && compareAtPrice > customPrice) ||
     (!defined(customPrice) && defined(subcategory->compareAtPrice) && subcategory->compareAtPrice > subcategory->defaultPrice)
   )] | order(_createdAt desc) {
@@ -128,11 +134,18 @@ export const getProductsOnSaleQuery = groq`
 
 // Search products by title or description
 export const searchProductsQuery = groq`
-  *[_type == "product" && status == "active" && (
+  *[_type == "product" && defined(subcategory) && (
     title match $searchTerm ||
     shortDescription match $searchTerm ||
     pt::text(description) match $searchTerm
   )] | order(_createdAt desc) {
+    ${productFields}
+  }
+`;
+
+// Get new arrivals (most recent products)
+export const getNewArrivalsQuery = groq`
+  *[_type == "product" && defined(subcategory)] | order(_createdAt desc) [0...$limit] {
     ${productFields}
   }
 `;
@@ -143,7 +156,6 @@ export interface SanityCreator {
   name: string;
   slug: string;
   bio?: string;
-  status: "active" | "inactive";
 }
 
 export interface SanityTargetGroup {
@@ -167,7 +179,6 @@ export interface SanityProduct {
   productFileKey?: string;
   productFileName?: string;
   productFileSize?: number;
-  status: "active" | "draft" | "archived";
   tags?: string[];
   metaTitle?: string;
   metaDescription?: string;
@@ -185,18 +196,6 @@ export interface SanityProduct {
   };
   creator?: SanityCreator;
   targetGroups?: SanityTargetGroup[];
-}
-
-// Filter options for product queries
-export interface ProductFilterOptions {
-  status?: "active" | "draft" | "archived";
-  subcategorySlug?: string;
-  categorySlug?: string;
-  targetGroupSlug?: string;
-  tags?: string[];
-  creatorSlug?: string;
-  onSale?: boolean;
-  searchTerm?: string;
 }
 
 // Pagination options
@@ -265,4 +264,8 @@ export async function searchProducts(searchTerm: string): Promise<SanityProduct[
   // Add wildcards for partial matching
   const term = `*${searchTerm}*`;
   return sanityClient.fetch(searchProductsQuery, { searchTerm: term });
+}
+
+export async function getNewArrivals(limit = 8): Promise<SanityProduct[]> {
+  return sanityClient.fetch(getNewArrivalsQuery, { limit });
 }

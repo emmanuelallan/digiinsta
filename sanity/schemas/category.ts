@@ -30,16 +30,11 @@ export default defineType({
       options: { hotspot: true },
     }),
     defineField({
-      name: "status",
-      title: "Status",
-      type: "string",
-      options: {
-        list: [
-          { title: "Active", value: "active" },
-          { title: "Archived", value: "archived" },
-        ],
-      },
-      initialValue: "active",
+      name: "displayOrder",
+      title: "Display Order",
+      type: "number",
+      description: "Order in which categories appear (lower numbers first)",
+      initialValue: 0,
     }),
     defineField({
       name: "metaTitle",
@@ -60,13 +55,13 @@ export default defineType({
     select: {
       title: "title",
       media: "image",
-      status: "status",
+      displayOrder: "displayOrder",
     },
-    prepare({ title, media, status }) {
+    prepare({ title, media, displayOrder }) {
       return {
         title,
         media,
-        subtitle: status === "archived" ? "Archived" : "Active",
+        subtitle: displayOrder !== undefined ? `Order: ${displayOrder}` : undefined,
       };
     },
   },

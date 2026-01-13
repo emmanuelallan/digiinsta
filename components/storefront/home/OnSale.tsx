@@ -19,7 +19,7 @@ const getCachedOnSale = () =>
     },
     ["on-sale"],
     {
-      revalidate: 3600, // 1 hour fallback
+      revalidate: 60, // 1 minute - reduced for fresher data
       tags: [COLLECTION_TAGS.onSale, COLLECTION_TAGS.allProducts],
     }
   )();

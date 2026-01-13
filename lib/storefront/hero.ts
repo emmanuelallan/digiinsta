@@ -42,9 +42,10 @@ export interface HeroSlide {
 
 /**
  * GROQ query for active hero slides ordered by displayOrder
+ * Note: We use Sanity's native draft/published system - only published slides are returned
  */
 const heroSlidesQuery = groq`
-  *[_type == "heroSlide" && status == "active"] | order(displayOrder asc) {
+  *[_type == "heroSlide"] | order(displayOrder asc) {
     _id,
     title,
     headline,

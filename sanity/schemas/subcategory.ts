@@ -44,18 +44,6 @@ export default defineType({
       description: "Original price in cents for sale display",
     }),
     defineField({
-      name: "status",
-      title: "Status",
-      type: "string",
-      options: {
-        list: [
-          { title: "Active", value: "active" },
-          { title: "Archived", value: "archived" },
-        ],
-      },
-      initialValue: "active",
-    }),
-    defineField({
       name: "metaTitle",
       title: "Meta Title",
       type: "string",
@@ -74,12 +62,11 @@ export default defineType({
     select: {
       title: "title",
       categoryTitle: "category.title",
-      status: "status",
     },
-    prepare({ title, categoryTitle, status }) {
+    prepare({ title, categoryTitle }) {
       return {
         title,
-        subtitle: `${categoryTitle || "No category"} • ${status === "archived" ? "Archived" : "Active"}`,
+        subtitle: categoryTitle || "No category",
       };
     },
   },

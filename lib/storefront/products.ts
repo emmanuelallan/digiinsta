@@ -20,8 +20,9 @@ import {
   getOnSaleProducts as sanityGetOnSaleProducts,
 } from "@/lib/sanity/queries/discovery-fetchers";
 import { resolveProductPrice } from "@/lib/pricing/resolver";
+import { urlFor } from "@/lib/sanity/image";
 import type { StorefrontProduct, StorefrontProductDetail } from "@/types/storefront";
-import type { BlockContent } from "@/types/sanity";
+import type { BlockContent, SanityImage } from "@/types/sanity";
 
 // ISR revalidation time in seconds (5 minutes)
 export const PRODUCT_REVALIDATE = 300;
@@ -303,6 +304,22 @@ export async function getProductsGroupedBySubcategory(
 // ============================================================================
 
 /**
+ * Transform Sanity image to include URL
+ * Converts Sanity image reference to include the actual URL for display
+ */
+function transformImage(image: SanityImage): SanityImage & { url: string } {
+  if (!image?.asset) {
+    return { ...image, url: "/images/placeholder-product.jpg" };
+  }
+  try {
+    const url = urlFor(image).width(800).height(600).fit("crop").url();
+    return { ...image, url };
+  } catch {
+    return { ...image, url: "/images/placeholder-product.jpg" };
+  }
+}
+
+/**
  * Transform Sanity product to storefront product with resolved price
  */
 function transformProduct(product: SanityProduct): StorefrontProduct {
@@ -317,13 +334,15 @@ function transformProduct(product: SanityProduct): StorefrontProduct {
     }
   );
 
+  // Transform images to include URLs
+  const transformedImages = product.images?.map(transformImage);
+
   return {
     _id: product._id,
     _createdAt: product._createdAt,
     title: product.title,
     shortDescription: product.shortDescription,
-    images: product.images,
-    status: product.status,
+    images: transformedImages,
     tags: product.tags,
     customPrice: product.customPrice,
     compareAtPrice: product.compareAtPrice,
@@ -371,6 +390,9 @@ function transformProductDetail(product: SanityProduct): StorefrontProductDetail
     }
   );
 
+  // Transform images to include URLs
+  const transformedImages = product.images?.map(transformImage);
+
   return {
     _id: product._id,
     _type: "product",
@@ -384,11 +406,10 @@ function transformProductDetail(product: SanityProduct): StorefrontProductDetail
     polarProductId: product.polarProductId,
     customPrice: product.customPrice,
     compareAtPrice: product.compareAtPrice,
-    images: product.images,
+    images: transformedImages,
     productFileKey: product.productFileKey,
     productFileName: product.productFileName,
     productFileSize: product.productFileSize,
-    status: product.status,
     tags: product.tags,
     metaTitle: product.metaTitle,
     metaDescription: product.metaDescription,
@@ -423,7 +444,6 @@ function transformProductDetail(product: SanityProduct): StorefrontProductDetail
           email: "",
           slug: { _type: "slug", current: product.creator.slug },
           bio: product.creator.bio,
-          status: product.creator.status,
         }
       : undefined,
     targetGroups: product.targetGroups?.map((tg) => ({

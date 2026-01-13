@@ -23,7 +23,6 @@ const postFields = groq`
   coverImage,
   author,
   publishedAt,
-  status,
   metaTitle,
   metaDescription,
   "category": category->{
@@ -32,22 +31,23 @@ const postFields = groq`
 `;
 
 // Get all published posts ordered by publishedAt
+// Note: We use defined(publishedAt) to identify published posts
 export const getAllPostsQuery = groq`
-  *[_type == "post" && status == "published"] | order(publishedAt desc) {
+  *[_type == "post" && defined(publishedAt)] | order(publishedAt desc) {
     ${postFields}
   }
 `;
 
 // Get posts with pagination
 export const getPostsPaginatedQuery = groq`
-  *[_type == "post" && status == "published"] | order(publishedAt desc) [$start...$end] {
+  *[_type == "post" && defined(publishedAt)] | order(publishedAt desc) [$start...$end] {
     ${postFields}
   }
 `;
 
 // Get total published post count
 export const getPostCountQuery = groq`
-  count(*[_type == "post" && status == "published"])
+  count(*[_type == "post" && defined(publishedAt)])
 `;
 
 // Get a single post by slug
@@ -59,21 +59,21 @@ export const getPostBySlugQuery = groq`
 
 // Get posts by category slug with pagination
 export const getPostsByCategorySlugQuery = groq`
-  *[_type == "post" && category->slug.current == $categorySlug && status == "published"] | order(publishedAt desc) [$start...$end] {
+  *[_type == "post" && category->slug.current == $categorySlug && defined(publishedAt)] | order(publishedAt desc) [$start...$end] {
     ${postFields}
   }
 `;
 
 // Get post count by category slug
 export const getPostCountByCategorySlugQuery = groq`
-  count(*[_type == "post" && category->slug.current == $categorySlug && status == "published"])
+  count(*[_type == "post" && category->slug.current == $categorySlug && defined(publishedAt)])
 `;
 
 // Get all post categories ordered by displayOrder
 export const getAllPostCategoriesQuery = groq`
   *[_type == "postCategory"] | order(displayOrder asc) {
     ${postCategoryFields},
-    "postCount": count(*[_type == "post" && references(^._id) && status == "published"])
+    "postCount": count(*[_type == "post" && references(^._id) && defined(publishedAt)])
   }
 `;
 
@@ -81,27 +81,27 @@ export const getAllPostCategoriesQuery = groq`
 export const getPostCategoryBySlugQuery = groq`
   *[_type == "postCategory" && slug.current == $slug][0] {
     ${postCategoryFields},
-    "postCount": count(*[_type == "post" && references(^._id) && status == "published"])
+    "postCount": count(*[_type == "post" && references(^._id) && defined(publishedAt)])
   }
 `;
 
 // Get recent posts (for sidebar/footer)
 export const getRecentPostsQuery = groq`
-  *[_type == "post" && status == "published"] | order(publishedAt desc) [0...$limit] {
+  *[_type == "post" && defined(publishedAt)] | order(publishedAt desc) [0...$limit] {
     ${postFields}
   }
 `;
 
 // Get related posts (same category, excluding current post)
 export const getRelatedPostsQuery = groq`
-  *[_type == "post" && status == "published" && category._ref == $categoryId && _id != $currentPostId] | order(publishedAt desc) [0...$limit] {
+  *[_type == "post" && defined(publishedAt) && category._ref == $categoryId && _id != $currentPostId] | order(publishedAt desc) [0...$limit] {
     ${postFields}
   }
 `;
 
 // Search posts by title or content
 export const searchPostsQuery = groq`
-  *[_type == "post" && status == "published" && (
+  *[_type == "post" && defined(publishedAt) && (
     title match $searchTerm ||
     excerpt match $searchTerm ||
     pt::text(content) match $searchTerm
@@ -131,7 +131,6 @@ export interface SanityPost {
   coverImage?: SanityImage;
   author?: string;
   publishedAt?: string;
-  status: "published" | "draft" | "archived";
   metaTitle?: string;
   metaDescription?: string;
   category?: SanityPostCategory;

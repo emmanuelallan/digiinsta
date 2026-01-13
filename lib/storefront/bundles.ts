@@ -101,7 +101,6 @@ function transformBundle(bundle: SanityBundle): StorefrontBundle {
     heroImage: bundle.heroImage,
     price: bundle.price,
     compareAtPrice: bundle.compareAtPrice,
-    status: bundle.status,
     productCount: bundle.products?.length ?? 0,
     resolvedPrice,
     // Computed properties for component compatibility
@@ -133,7 +132,6 @@ function transformBundleDetail(bundle: SanityBundle): StorefrontBundleDetail {
     price: bundle.price,
     compareAtPrice: bundle.compareAtPrice,
     heroImage: bundle.heroImage,
-    status: bundle.status,
     metaTitle: bundle.metaTitle,
     metaDescription: bundle.metaDescription,
     products: (bundle.products ?? []).map(transformBundleProduct),

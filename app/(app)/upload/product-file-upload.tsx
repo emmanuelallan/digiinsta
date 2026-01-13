@@ -123,7 +123,7 @@ export function ProductFileUpload() {
           alert(`File ${file.name} is too large. Max size is 500MB.`);
           return;
         }
-        uploadFile(file);
+        void uploadFile(file);
       });
 
       // Reset input

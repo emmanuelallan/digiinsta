@@ -20,12 +20,12 @@ export function isNewArrival(createdAt: string, referenceDate: Date = new Date()
 
 /**
  * Product type for related product checking
+ * Note: status field is no longer used - we rely on Sanity's native draft/published system
  */
 export interface RelatedProductInput {
   _id: string;
   subcategory: { _id: string };
   tags?: string[];
-  status?: "active" | "draft" | "archived";
 }
 
 /**
@@ -64,7 +64,8 @@ export function isRelatedProduct(
 
 /**
  * Filter products to get only related ones
- * Excludes the source product and only includes active products
+ * Excludes the source product
+ * Note: We rely on Sanity's native draft/published system for filtering active products
  *
  * @param products - Array of products to filter
  * @param sourceProduct - The source product to find related products for
@@ -75,9 +76,6 @@ export function filterRelatedProducts(
   sourceProduct: RelatedProductInput
 ): RelatedProductInput[] {
   return products.filter(
-    (product) =>
-      product._id !== sourceProduct._id &&
-      product.status === "active" &&
-      isRelatedProduct(product, sourceProduct)
+    (product) => product._id !== sourceProduct._id && isRelatedProduct(product, sourceProduct)
   );
 }

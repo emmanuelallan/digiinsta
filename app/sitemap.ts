@@ -29,12 +29,13 @@ interface SitemapDocument {
  */
 export async function generateSitemaps(): Promise<{ id: number }[]> {
   // Count total URLs from Sanity
+  // Note: We use Sanity's native draft/published system - only published documents are returned
   const countQuery = groq`{
-    "products": count(*[_type == "product" && status == "active"]),
-    "categories": count(*[_type == "category" && status == "active"]),
-    "subcategories": count(*[_type == "subcategory" && status == "active"]),
-    "bundles": count(*[_type == "bundle" && status == "active"]),
-    "posts": count(*[_type == "post" && status == "published"])
+    "products": count(*[_type == "product" && defined(subcategory)]),
+    "categories": count(*[_type == "category"]),
+    "subcategories": count(*[_type == "subcategory"]),
+    "bundles": count(*[_type == "bundle"]),
+    "posts": count(*[_type == "post" && defined(publishedAt)])
   }`;
 
   const counts = await sanityClient.fetch<{
@@ -192,8 +193,9 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
   const endIndex = Math.max(startIndex, Math.floor(dynamicOffset + remainingSpace));
 
   // Fetch all active products from Sanity
+  // Note: Sanity client is configured with perspective: "published" - only published docs returned
   const productsQuery = groq`
-    *[_type == "product" && status == "active"] | order(_createdAt desc) [${startIndex}...${endIndex}] {
+    *[_type == "product" && defined(subcategory)] | order(_createdAt desc) [${startIndex}...${endIndex}] {
       "slug": slug.current,
       _updatedAt
     }
@@ -209,7 +211,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
 
   // Fetch all active categories from Sanity
   const categoriesQuery = groq`
-    *[_type == "category" && status == "active"] | order(displayOrder asc) {
+    *[_type == "category"] | order(displayOrder asc) {
       "slug": slug.current,
       _updatedAt
     }
@@ -225,7 +227,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
 
   // Fetch all active subcategories from Sanity
   const subcategoriesQuery = groq`
-    *[_type == "subcategory" && status == "active"] | order(title asc) {
+    *[_type == "subcategory"] | order(title asc) {
       "slug": slug.current,
       _updatedAt
     }
@@ -243,7 +245,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
 
   // Fetch all active bundles from Sanity
   const bundlesQuery = groq`
-    *[_type == "bundle" && status == "active"] | order(_createdAt desc) {
+    *[_type == "bundle"] | order(_createdAt desc) {
       "slug": slug.current,
       _updatedAt
     }
@@ -259,7 +261,7 @@ export default async function sitemap({ id }: { id: number }): Promise<MetadataR
 
   // Fetch all published blog posts from Sanity
   const postsQuery = groq`
-    *[_type == "post" && status == "published"] | order(publishedAt desc) {
+    *[_type == "post" && defined(publishedAt)] | order(publishedAt desc) {
       "slug": slug.current,
       _updatedAt
     }

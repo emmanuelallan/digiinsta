@@ -113,7 +113,6 @@ export interface SanityCategory extends SanityDocument {
   icon?: "Microscope" | "ChartLine" | "Sparkles" | "Palette" | "Workflow" | "Folder";
   gradient?: string;
   displayOrder?: number;
-  status?: "active" | "archived";
   metaTitle?: string;
   metaDescription?: string;
 }
@@ -129,7 +128,6 @@ export interface SanitySubcategory extends SanityDocument {
   category: SanityReference<"category">;
   defaultPrice: number;
   compareAtPrice?: number;
-  status?: "active" | "archived";
   metaTitle?: string;
   metaDescription?: string;
 }
@@ -150,7 +148,6 @@ export interface SanityCreator extends SanityDocument {
   email: string;
   slug: SanitySlug;
   bio?: string;
-  status?: "active" | "inactive";
 }
 
 /**
@@ -177,6 +174,11 @@ export interface SanityTargetGroupExpanded extends Omit<SanityTargetGroup, "rela
 
 /**
  * Product document
+ *
+ * Note: We use Sanity's native draft/published system instead of a custom status field.
+ * - Draft products are only visible in Sanity Studio
+ * - Published products are visible on the storefront
+ * - Use the "Publish" button in Sanity to make products live
  */
 export interface SanityProduct extends SanityDocument {
   _type: "product";
@@ -193,7 +195,6 @@ export interface SanityProduct extends SanityDocument {
   productFileKey?: string;
   productFileName?: string;
   productFileSize?: number;
-  status?: "active" | "draft" | "archived";
   tags?: string[];
   targetGroups?: SanityReference<"targetGroup">[];
   metaTitle?: string;
@@ -226,7 +227,6 @@ export interface SanityBundle extends SanityDocument {
   price: number;
   compareAtPrice?: number;
   heroImage?: SanityImage;
-  status?: "active" | "draft" | "archived";
   metaTitle?: string;
   metaDescription?: string;
 }
@@ -262,7 +262,6 @@ export interface SanityPost extends SanityDocument {
   category?: SanityReference<"postCategory">;
   author?: string;
   publishedAt?: string;
-  status?: "published" | "draft" | "archived";
   metaTitle?: string;
   metaDescription?: string;
 }
@@ -298,7 +297,6 @@ export interface SanityHeroSlide extends SanityDocument {
   textColor?: "white" | "black";
   overlayOpacity?: number;
   displayOrder?: number;
-  status?: "active" | "inactive";
 }
 
 /**
@@ -365,7 +363,6 @@ export interface ProductListItem {
   slug: SanitySlug;
   shortDescription?: string;
   images?: SanityImage[];
-  status?: "active" | "draft" | "archived";
   tags?: string[];
   customPrice?: number;
   compareAtPrice?: number;
@@ -401,7 +398,6 @@ export interface BundleListItem {
   heroImage?: SanityImage;
   price: number;
   compareAtPrice?: number;
-  status?: "active" | "draft" | "archived";
   productCount: number;
 }
 
@@ -417,7 +413,6 @@ export interface PostListItem {
   coverImage?: SanityImage;
   author?: string;
   publishedAt?: string;
-  status?: "published" | "draft" | "archived";
   category?: {
     _id: string;
     title: string;

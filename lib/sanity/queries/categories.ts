@@ -1,6 +1,17 @@
 import { sanityClient } from "../client";
 import { groq } from "next-sanity";
 
+/**
+ * Category Queries
+ *
+ * Note: We use Sanity's native draft/published system instead of a custom status field.
+ * The sanityClient is configured with `perspective: "published"` which only returns
+ * published documents. Draft documents are automatically filtered out.
+ *
+ * Categories and subcategories no longer use status filtering - all published
+ * documents are shown.
+ */
+
 // Base category fields projection
 const categoryFields = groq`
   _id,
@@ -13,7 +24,6 @@ const categoryFields = groq`
   icon,
   gradient,
   displayOrder,
-  status,
   metaTitle,
   metaDescription
 `;
@@ -28,7 +38,6 @@ const subcategoryFields = groq`
   description,
   defaultPrice,
   compareAtPrice,
-  status,
   metaTitle,
   metaDescription,
   "category": category->{
@@ -38,12 +47,12 @@ const subcategoryFields = groq`
   }
 `;
 
-// Get all active categories ordered by displayOrder
+// Get all categories ordered by displayOrder
 export const getAllCategoriesQuery = groq`
-  *[_type == "category" && status == "active"] | order(displayOrder asc) {
+  *[_type == "category"] | order(displayOrder asc) {
     ${categoryFields},
-    "subcategoryCount": count(*[_type == "subcategory" && references(^._id) && status == "active"]),
-    "productCount": count(*[_type == "product" && status == "active" && subcategory->category._ref == ^._id])
+    "subcategoryCount": count(*[_type == "subcategory" && references(^._id)]),
+    "productCount": count(*[_type == "product" && defined(subcategory) && subcategory->category._ref == ^._id])
   }
 `;
 
@@ -51,18 +60,18 @@ export const getAllCategoriesQuery = groq`
 export const getCategoryBySlugQuery = groq`
   *[_type == "category" && slug.current == $slug][0] {
     ${categoryFields},
-    "subcategories": *[_type == "subcategory" && references(^._id) && status == "active"] | order(title asc) {
+    "subcategories": *[_type == "subcategory" && references(^._id)] | order(title asc) {
       ${subcategoryFields},
-      "productCount": count(*[_type == "product" && references(^._id) && status == "active"])
+      "productCount": count(*[_type == "product" && references(^._id) && defined(subcategory)])
     }
   }
 `;
 
-// Get all active subcategories ordered by category and title
+// Get all subcategories ordered by category and title
 export const getAllSubcategoriesQuery = groq`
-  *[_type == "subcategory" && status == "active"] | order(category->displayOrder asc, title asc) {
+  *[_type == "subcategory"] | order(category->displayOrder asc, title asc) {
     ${subcategoryFields},
-    "productCount": count(*[_type == "product" && references(^._id) && status == "active"])
+    "productCount": count(*[_type == "product" && references(^._id) && defined(subcategory)])
   }
 `;
 
@@ -70,15 +79,15 @@ export const getAllSubcategoriesQuery = groq`
 export const getSubcategoryBySlugQuery = groq`
   *[_type == "subcategory" && slug.current == $slug][0] {
     ${subcategoryFields},
-    "productCount": count(*[_type == "product" && references(^._id) && status == "active"])
+    "productCount": count(*[_type == "product" && references(^._id) && defined(subcategory)])
   }
 `;
 
 // Get subcategories by category slug
 export const getSubcategoriesByCategorySlugQuery = groq`
-  *[_type == "subcategory" && category->slug.current == $categorySlug && status == "active"] | order(title asc) {
+  *[_type == "subcategory" && category->slug.current == $categorySlug] | order(title asc) {
     ${subcategoryFields},
-    "productCount": count(*[_type == "product" && references(^._id) && status == "active"])
+    "productCount": count(*[_type == "product" && references(^._id) && defined(subcategory)])
   }
 `;
 
@@ -93,8 +102,7 @@ export interface SanityCategory {
   image?: SanityImage;
   icon?: string;
   gradient?: string;
-  displayOrder: number;
-  status: "active" | "archived";
+  displayOrder?: number;
   metaTitle?: string;
   metaDescription?: string;
   subcategoryCount?: number;
@@ -111,7 +119,6 @@ export interface SanitySubcategory {
   description?: string;
   defaultPrice: number;
   compareAtPrice?: number;
-  status: "active" | "archived";
   metaTitle?: string;
   metaDescription?: string;
   category: {

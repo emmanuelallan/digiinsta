@@ -18,7 +18,7 @@ const getCachedNewArrivals = () =>
     },
     ["new-arrivals"],
     {
-      revalidate: 3600, // 1 hour fallback
+      revalidate: 60, // 1 minute - reduced for fresher data
       tags: [COLLECTION_TAGS.newArrivals, COLLECTION_TAGS.allProducts],
     }
   )();

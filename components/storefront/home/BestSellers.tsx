@@ -18,7 +18,7 @@ const getCachedBestSellers = () =>
     },
     ["best-sellers"],
     {
-      revalidate: 3600, // 1 hour fallback
+      revalidate: 60, // 1 minute - reduced for fresher data
       tags: [COLLECTION_TAGS.bestSellers, COLLECTION_TAGS.allProducts],
     }
   )();

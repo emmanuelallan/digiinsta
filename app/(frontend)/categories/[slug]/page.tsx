@@ -24,8 +24,8 @@ import { generateCategoryJsonLd, generateBreadcrumbJsonLd, SITE_URL } from "@/li
 import { generateCategoryMeta } from "@/lib/seo/meta";
 import { COLLECTION_TAGS } from "@/lib/revalidation/tags";
 
-// ISR revalidation: 24 hours for category pages (fallback)
-export const revalidate = 86400;
+// ISR revalidation: 5 minutes for category pages (reduced for fresher data)
+export const revalidate = 300;
 
 /**
  * Generate static params for all active categories
@@ -55,7 +55,7 @@ const getCachedCategory = (slug: string) =>
     },
     [`category-${slug}`],
     {
-      revalidate: 86400, // 24 hour fallback
+      revalidate: 300, // 5 minute fallback - reduced for fresher data
       tags: [`category:${slug}`, COLLECTION_TAGS.allCategories],
     }
   )();
@@ -70,7 +70,7 @@ const getCachedProductsGroupedBySubcategory = (categorySlug: string) =>
     },
     [`products-by-subcategory-${categorySlug}`],
     {
-      revalidate: 86400,
+      revalidate: 300, // 5 minute fallback - reduced for fresher data
       tags: [`category:${categorySlug}`, COLLECTION_TAGS.allProducts],
     }
   )();
@@ -85,7 +85,7 @@ const getCachedRelatedCategories = (categoryId: string) =>
     },
     [`related-categories-${categoryId}`],
     {
-      revalidate: 86400,
+      revalidate: 300, // 5 minute fallback - reduced for fresher data
       tags: [COLLECTION_TAGS.allCategories],
     }
   )();

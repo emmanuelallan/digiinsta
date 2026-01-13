@@ -1,5 +1,13 @@
 import { defineField, defineType } from "sanity";
 
+/**
+ * Product Schema
+ *
+ * Note: We use Sanity's native draft/published system instead of a custom status field.
+ * - Draft products are only visible in Sanity Studio
+ * - Published products are visible on the storefront
+ * - Use the "Publish" button in Sanity to make products live
+ */
 export default defineType({
   name: "product",
   title: "Product",
@@ -85,19 +93,6 @@ export default defineType({
       description: "File size in bytes",
     }),
     defineField({
-      name: "status",
-      title: "Status",
-      type: "string",
-      options: {
-        list: [
-          { title: "Active", value: "active" },
-          { title: "Draft", value: "draft" },
-          { title: "Archived", value: "archived" },
-        ],
-      },
-      initialValue: "draft",
-    }),
-    defineField({
       name: "tags",
       title: "Tags",
       type: "array",
@@ -130,14 +125,11 @@ export default defineType({
       title: "title",
       subtitle: "subcategory.title",
       media: "images.0",
-      status: "status",
     },
-    prepare({ title, subtitle, media, status }) {
-      const statusLabel =
-        status === "active" ? "Active" : status === "draft" ? "Draft" : "Archived";
+    prepare({ title, subtitle, media }) {
       return {
         title,
-        subtitle: `${subtitle || "No subcategory"} • ${statusLabel}`,
+        subtitle: subtitle || "No subcategory",
         media,
       };
     },

@@ -36,7 +36,6 @@ const productInputArb = (): fc.Arbitrary<RelatedProductInput> =>
     _id: productIdArb,
     subcategory: fc.record({ _id: subcategoryIdArb }),
     tags: tagsArb,
-    status: fc.constantFrom("active" as const, "draft" as const, "archived" as const),
   });
 
 describe("Related Products Property Tests", () => {
@@ -166,26 +165,6 @@ describe("Related Products Property Tests", () => {
           const result = filterRelatedProducts(products, sourceProduct);
           expect(result.every((p) => p._id !== sourceProduct._id)).toBe(true);
         })
-      );
-    });
-
-    it("should only include active products", () => {
-      fc.assert(
-        fc.property(
-          subcategoryIdArb,
-          fc.array(productInputArb(), { minLength: 2, maxLength: 10 }),
-          (sharedSubcat, products) => {
-            const productsWithSharedSubcat = products.map((p) => ({
-              ...p,
-              subcategory: { _id: sharedSubcat },
-            }));
-
-            const sourceProduct = productsWithSharedSubcat[0];
-            const result = filterRelatedProducts(productsWithSharedSubcat, sourceProduct);
-
-            expect(result.every((p) => p.status === "active")).toBe(true);
-          }
-        )
       );
     });
 

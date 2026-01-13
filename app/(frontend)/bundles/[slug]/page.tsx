@@ -363,7 +363,6 @@ export default async function BundlePage({ params }: BundlePageProps) {
                     title: p.title,
                     shortDescription: p.shortDescription,
                     images: p.images,
-                    status: p.status,
                     tags: p.tags,
                     customPrice: p.customPrice,
                     compareAtPrice: p.compareAtPrice,

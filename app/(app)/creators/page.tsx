@@ -13,13 +13,13 @@ import { CreatorsClient } from "./creators-client";
 export const dynamic = "force-dynamic";
 
 // GROQ query to fetch all creators
-const CREATORS_QUERY = `*[_type == "creator" && status == "active"] | order(name asc) {
+// Note: We use Sanity's native draft/published system - only published creators are returned
+const CREATORS_QUERY = `*[_type == "creator"] | order(name asc) {
   _id,
   name,
   email,
   "slug": slug.current,
-  bio,
-  status
+  bio
 }`;
 
 export interface Creator {
@@ -28,7 +28,6 @@ export interface Creator {
   email: string;
   slug: string;
   bio?: string;
-  status: string;
 }
 
 async function getCreators(): Promise<Creator[]> {

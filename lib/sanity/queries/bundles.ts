@@ -41,7 +41,6 @@ const bundleFields = groq`
   price,
   compareAtPrice,
   heroImage,
-  status,
   metaTitle,
   metaDescription,
   "products": products[]->{
@@ -49,23 +48,23 @@ const bundleFields = groq`
   }
 `;
 
-// Get all active bundles
+// Get all bundles (uses Sanity's native draft/published system)
 export const getAllBundlesQuery = groq`
-  *[_type == "bundle" && status == "active"] | order(_createdAt desc) {
+  *[_type == "bundle"] | order(_createdAt desc) {
     ${bundleFields}
   }
 `;
 
 // Get bundles with pagination
 export const getBundlesPaginatedQuery = groq`
-  *[_type == "bundle" && status == "active"] | order(_createdAt desc) [$start...$end] {
+  *[_type == "bundle"] | order(_createdAt desc) [$start...$end] {
     ${bundleFields}
   }
 `;
 
 // Get total bundle count
 export const getBundleCountQuery = groq`
-  count(*[_type == "bundle" && status == "active"])
+  count(*[_type == "bundle"])
 `;
 
 // Get a single bundle by slug
@@ -77,14 +76,14 @@ export const getBundleBySlugQuery = groq`
 
 // Get bundles containing a specific product
 export const getBundlesContainingProductQuery = groq`
-  *[_type == "bundle" && status == "active" && $productId in products[]._ref] | order(_createdAt desc) {
+  *[_type == "bundle" && $productId in products[]._ref] | order(_createdAt desc) {
     ${bundleFields}
   }
 `;
 
 // Get bundles on sale (compareAtPrice > price)
 export const getBundlesOnSaleQuery = groq`
-  *[_type == "bundle" && status == "active" && defined(compareAtPrice) && compareAtPrice > price] | order(_createdAt desc) {
+  *[_type == "bundle" && defined(compareAtPrice) && compareAtPrice > price] | order(_createdAt desc) {
     ${bundleFields}
   }
 `;
@@ -127,7 +126,6 @@ export interface SanityBundle {
   price: number;
   compareAtPrice?: number;
   heroImage?: SanityImage;
-  status: "active" | "draft" | "archived";
   metaTitle?: string;
   metaDescription?: string;
   products: BundleProduct[];

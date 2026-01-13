@@ -18,7 +18,7 @@ const getCachedEditorsPicks = () =>
     },
     ["editors-picks"],
     {
-      revalidate: 3600, // 1 hour fallback
+      revalidate: 60, // 1 minute - reduced for fresher data
       tags: [COLLECTION_TAGS.editorsPicks, COLLECTION_TAGS.allProducts],
     }
   )();

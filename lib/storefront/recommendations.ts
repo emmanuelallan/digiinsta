@@ -168,7 +168,6 @@ function transformCategory(category: SanityCategory): StorefrontCategory {
     description: category.description,
     icon: category.icon as StorefrontCategory["icon"],
     displayOrder: category.displayOrder,
-    status: category.status,
   };
 }
 
@@ -187,7 +186,6 @@ function transformSubcategory(subcategory: SanitySubcategory): StorefrontSubcate
     description: subcategory.description,
     defaultPrice: subcategory.defaultPrice,
     compareAtPrice: subcategory.compareAtPrice,
-    status: subcategory.status,
     category: {
       _id: subcategory.category._id,
       _type: "category",
@@ -221,7 +219,6 @@ function transformProduct(product: SanityProduct): StorefrontProduct {
     title: product.title,
     shortDescription: product.shortDescription,
     images: product.images,
-    status: product.status,
     tags: product.tags,
     customPrice: product.customPrice,
     compareAtPrice: product.compareAtPrice,

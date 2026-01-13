@@ -24,6 +24,7 @@ import {
 import { getBestSellingProducts } from "@/lib/analytics/bestsellers";
 import { getFrequentlyBoughtTogether as analyticsGetFBT } from "@/lib/analytics/fbt";
 import { resolveProductPrice } from "@/lib/pricing/resolver";
+import { urlFor } from "@/lib/sanity/image";
 import type {
   StorefrontProduct,
   NewArrivalsResult,
@@ -31,6 +32,7 @@ import type {
   OnSaleResult,
   RelatedProductsResult,
   FrequentlyBoughtTogetherResult,
+  SanityImage,
 } from "@/types/storefront";
 
 // Re-export target group type
@@ -163,6 +165,22 @@ export async function getFrequentlyBoughtTogether(
 // ============================================================================
 
 /**
+ * Transform Sanity image to include URL
+ * Converts Sanity image reference to include the actual URL for display
+ */
+function transformImage(image: SanityImage): SanityImage & { url: string } {
+  if (!image?.asset) {
+    return { ...image, url: "/images/placeholder-product.jpg" };
+  }
+  try {
+    const url = urlFor(image).width(800).height(600).fit("crop").url();
+    return { ...image, url };
+  } catch {
+    return { ...image, url: "/images/placeholder-product.jpg" };
+  }
+}
+
+/**
  * Transform Sanity product to storefront product with resolved price
  */
 function transformProduct(product: SanityProduct): StorefrontProduct {
@@ -177,16 +195,19 @@ function transformProduct(product: SanityProduct): StorefrontProduct {
     }
   );
 
+  // Transform images to include URLs
+  const transformedImages = product.images?.map(transformImage);
+
   return {
     _id: product._id,
     _createdAt: product._createdAt,
     title: product.title,
     shortDescription: product.shortDescription,
-    images: product.images,
-    status: product.status,
+    images: transformedImages,
     tags: product.tags,
     customPrice: product.customPrice,
     compareAtPrice: product.compareAtPrice,
+    polarProductId: product.polarProductId,
     subcategory: {
       _id: product.subcategory._id,
       title: product.subcategory.title,
