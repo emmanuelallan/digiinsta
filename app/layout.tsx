@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
+import { Cormorant_Garamond, Josefin_Sans } from "next/font/google";
 import "./globals.css";
 import { generateMetadata as generateBaseMetadata } from "@/lib/utils/seo";
 import { generateOrganizationStructuredData } from "@/lib/utils/seo";
 import { UmamiScript } from "@/components/analytics/umami-script";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const cormorantGaramond = Cormorant_Garamond({
+  variable: "--font-cormorant-garamond",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const josefinSans = Josefin_Sans({
+  variable: "--font-josefin-sans",
   subsets: ["latin"],
+  weight: ["100", "200", "300", "400", "500", "600", "700"],
 });
 
 // Base SEO metadata for the entire site
@@ -33,7 +33,11 @@ export default function RootLayout({
   const organizationStructuredData = generateOrganizationStructuredData();
 
   return (
-    <html lang="en" className={inter.variable}>
+    <html
+      lang="en"
+      suppressHydrationWarning={true}
+      className={`${cormorantGaramond.variable} ${josefinSans.variable}`}
+    >
       <head>
         <script
           type="application/ld+json"
@@ -43,7 +47,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${cormorantGaramond.variable} ${josefinSans.variable} antialiased`}
       >
         {children}
         <UmamiScript />
