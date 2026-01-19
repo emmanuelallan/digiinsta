@@ -1,0 +1,7 @@
+// Send auth code handler - placeholder
+import { NextRequest, NextResponse } from "next/server";
+
+export async function POST(request: NextRequest) {
+  // TODO: Implement send code
+  return NextResponse.json({ error: "Not implemented" }, { status: 501 });
+}

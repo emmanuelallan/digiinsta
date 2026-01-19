@@ -1,70 +1,34 @@
 {
   "compilerOptions": {
-    // Type Checking - Strict mode
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    // Disabled: causes issues with process.env and Payload hooks data access
-    // "noPropertyAccessFromIndexSignature": true,
-
-    // Module Resolution
-    "target": "ES2022",
+    "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
     "allowJs": true,
     "skipLibCheck": true,
-
-    // Emit
+    "strict": true,
     "noEmit": true,
-    "incremental": true,
-    "isolatedModules": true,
-
-    // Interop
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
-
-    // JSX
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
     "jsx": "react-jsx",
-    "jsxImportSource": "react",
-
-    // Paths
-    "baseUrl": ".",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "paths": {
-      "@/*": ["./*"],
-      "@/app/*": ["./app/*"],
-      "@/components/*": ["./components/*"],
-      "@/lib/*": ["./lib/*"],
-      "@/collections/*": ["./collections/*"],
-      "@/public/*": ["./public/*"]
-    },
-
-    // Next.js
-    "plugins": [{ "name": "next" }]
+      "@/*": ["./*"]
+    }
   },
   "include": [
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    "**/*.mts",
     ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
   ],
-  "exclude": [
-    "node_modules",
-    ".next",
-    "out",
-    "build",
-    "dist",
-    "migrations",
-    "vitest.config.ts",
-    "__tests__",
-    "__tests__search",
-    "studio-digiinsta"
-  ]
+  "exclude": ["node_modules"]
 }

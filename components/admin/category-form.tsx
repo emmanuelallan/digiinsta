@@ -1,0 +1,4 @@
+// Category form component - placeholder
+export default function CategoryForm() {
+  return <form>Category Form</form>;
+}
