@@ -1,4 +1,0 @@
-// Login page - placeholder
-export default function LoginPage() {
-  return <div>Login</div>;
-}

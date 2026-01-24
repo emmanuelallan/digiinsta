@@ -1,0 +1,9 @@
+export { ImageCarousel } from "./image-carousel";
+export { ProductInfo } from "./product-info";
+export { BuyNowButton } from "./buy-now-button";
+export { WhatsIncluded } from "./whats-included";
+export { WhyItWorks } from "./why-it-works";
+export { HowToUse } from "./how-to-use";
+export { RelatedProducts } from "./related-products";
+export { FAQ } from "./faq";
+export { VariantSelector } from "./variant-selector";

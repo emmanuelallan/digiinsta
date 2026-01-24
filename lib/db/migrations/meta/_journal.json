@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1769198084553,
+      "tag": "0000_exotic_matthew_murdock",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1769232913186,
+      "tag": "0001_wet_lilith",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1769237597195,
+      "tag": "0002_bizarre_glorian",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1769244565910,
+      "tag": "0003_married_viper",
+      "breakpoints": true
+    }
+  ]
+}

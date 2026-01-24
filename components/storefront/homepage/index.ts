@@ -1,0 +1,9 @@
+export { HeroSection } from "./hero-section";
+export { CollectionCards } from "./collection-cards";
+export { ValentineHighlight } from "./valentine-highlight";
+export { HowItWorks } from "./how-it-works";
+export { BestSellers } from "./best-sellers";
+export { NewProducts } from "./new-products";
+export { WhyPeopleLove } from "./why-people-love";
+export { EmailCapture } from "./email-capture";
+export { EmailCaptureWrapper } from "./email-capture-wrapper";
