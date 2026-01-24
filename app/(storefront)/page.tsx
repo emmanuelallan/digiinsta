@@ -61,28 +61,72 @@ export default async function HomePage() {
     getAllCollections(),
   ]);
 
+  // JSON-LD structured data for Organization
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Digital love for the heart",
+    url: process.env.NEXT_PUBLIC_SITE_URL || "https://digiinsta.store",
+    logo: `${process.env.NEXT_PUBLIC_SITE_URL || "https://digiinsta.store"}/images/logo/logo.svg`,
+    description: "Thoughtfully designed digital products to deepen connection and celebrate the relationships that matter most.",
+    sameAs: [
+      // Add your social media URLs here
+      // "https://facebook.com/yourpage",
+      // "https://instagram.com/yourpage",
+      // "https://twitter.com/yourpage",
+    ],
+  };
+
+  // JSON-LD for Website
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Digital love for the heart",
+    url: process.env.NEXT_PUBLIC_SITE_URL || "https://digiinsta.store",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${process.env.NEXT_PUBLIC_SITE_URL || "https://digiinsta.store"}/search?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+  };
+
   return (
-    <div className="flex flex-col">
-      <HeroSection
-        headline="The Ultimate Valentine's Gift"
-        subheadline="Made for couples who want more. Join 200,000+ happy users."
-        ctaText="SHOP NOW"
-        ctaHref="/collections/valentines"
+    <>
+      {/* JSON-LD Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
 
-      <CollectionCards collections={collections.slice(0, 4)} />
+      <div className="flex flex-col">
+        <HeroSection
+          headline="The Ultimate Valentine's Gift"
+          subheadline="Made for couples who want more. Join 200,000+ happy users."
+          ctaText="SHOP NOW"
+          ctaHref="/collections/valentines"
+        />
 
-      {valentineProducts.length > 0 && (
-        <ValentineHighlight featuredProducts={valentineProducts} />
-      )}
+        <CollectionCards collections={collections.slice(0, 4)} />
 
-      {bestSellers.length > 0 && <BestSellers products={bestSellers} />}
+        {valentineProducts.length > 0 && (
+          <ValentineHighlight featuredProducts={valentineProducts} />
+        )}
 
-      <WhyPeopleLove valuePoints={whyPeopleLovePoints} />
+        {bestSellers.length > 0 && <BestSellers products={bestSellers} />}
 
-      {newProducts.length > 0 && <NewProducts products={newProducts} />}
+        <WhyPeopleLove valuePoints={whyPeopleLovePoints} />
 
-      <EmailCaptureWrapper />
-    </div>
+        {newProducts.length > 0 && <NewProducts products={newProducts} />}
+
+        <EmailCaptureWrapper />
+      </div>
+    </>
   );
 }

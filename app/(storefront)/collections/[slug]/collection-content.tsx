@@ -20,6 +20,31 @@ export function CollectionContent({ products, collectionName, collectionDescript
   const [sortOption, setSortOption] = useState<SortOption>("popularity");
   const [showSortMenu, setShowSortMenu] = useState(false);
 
+  // Breadcrumb JSON-LD
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: process.env.NEXT_PUBLIC_SITE_URL || "https://digiinsta.store",
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Collections",
+        item: `${process.env.NEXT_PUBLIC_SITE_URL || "https://digiinsta.store"}/collections`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: collectionName,
+      },
+    ],
+  };
+
   // Apply sorting
   const sortedProducts = useMemo(() => {
     let result = [...products];
@@ -52,6 +77,12 @@ export function CollectionContent({ products, collectionName, collectionDescript
 
   return (
     <section className="bg-white">
+      {/* Breadcrumb JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         {/* Breadcrumb */}
         <div className="py-6 border-b border-gray-200">

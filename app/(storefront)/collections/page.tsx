@@ -24,9 +24,35 @@ export const metadata: Metadata = {
 
 export default async function CollectionsPage() {
   const collections = await getAllCollections();
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://digiinsta.store";
+
+  // Breadcrumb JSON-LD
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: baseUrl,
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Collections",
+      },
+    ],
+  };
 
   return (
     <div className="bg-white">
+      {/* Breadcrumb JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
         {/* Breadcrumb */}
         <div className="py-6 border-b border-gray-200">
