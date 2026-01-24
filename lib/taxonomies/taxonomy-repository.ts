@@ -1,5 +1,6 @@
 import { db, productTypes, formats, occasions, collections } from '@/lib/db';
-import { eq } from 'drizzle-orm';
+import { eq, ne } from 'drizzle-orm';
+import { generateSlug, generateUniqueSlug } from '@/lib/utils/slug';
 
 export type TaxonomyType = 'product_type' | 'format' | 'occasion' | 'collection';
 
@@ -11,6 +12,7 @@ export interface SimpleTaxonomy {
 
 export interface ComplexTaxonomy {
   id: string;
+  slug: string;
   title: string;
   description: string;
   imageUrl: string;
@@ -46,9 +48,19 @@ export class TaxonomyRepository {
   ): Promise<ComplexTaxonomy> {
     const table = type === 'occasion' ? occasions : collections;
     
+    // Generate slug from title
+    const baseSlug = generateSlug(data.title);
+    
+    // Get existing slugs to ensure uniqueness
+    const existingRecords = await db.select({ slug: table.slug }).from(table);
+    const existingSlugs = existingRecords.map(r => r.slug);
+    
+    // Generate unique slug
+    const slug = generateUniqueSlug(baseSlug, existingSlugs);
+    
     const [result] = await db
       .insert(table)
-      .values(data)
+      .values({ ...data, slug })
       .returning();
 
     return result;
@@ -113,6 +125,24 @@ export class TaxonomyRepository {
   }
 
   /**
+   * Get a complex taxonomy by slug
+   */
+  async getTaxonomyBySlug(
+    type: 'occasion' | 'collection',
+    slug: string
+  ): Promise<ComplexTaxonomy | null> {
+    const table = type === 'occasion' ? occasions : collections;
+
+    const results = await db
+      .select()
+      .from(table)
+      .where(eq(table.slug, slug))
+      .limit(1);
+
+    return results.length > 0 ? results[0] : null;
+  }
+
+  /**
    * Update a simple taxonomy (Product Type or Format)
    */
   async updateSimpleTaxonomy(
@@ -141,9 +171,23 @@ export class TaxonomyRepository {
   ): Promise<ComplexTaxonomy> {
     const table = type === 'occasion' ? occasions : collections;
     
+    // Generate new slug from title
+    const baseSlug = generateSlug(data.title);
+    
+    // Get existing slugs (excluding current record)
+    const existingRecords = await db
+      .select({ slug: table.slug })
+      .from(table)
+      .where(ne(table.id, id));
+    const existingSlugs = existingRecords.map(r => r.slug);
+    
+    // Generate unique slug
+    const slug = generateUniqueSlug(baseSlug, existingSlugs);
+    
     const updateData: any = {
       title: data.title,
       description: data.description,
+      slug,
     };
 
     // Only update imageUrl if provided

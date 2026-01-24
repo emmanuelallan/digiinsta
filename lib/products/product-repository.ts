@@ -6,7 +6,8 @@
  */
 
 import { db, products } from '@/lib/db';
-import { eq } from 'drizzle-orm';
+import { eq, ne } from 'drizzle-orm';
+import { generateSlug, generateUniqueSlug } from '@/lib/utils/slug';
 
 /**
  * Product entity as stored in the database
@@ -14,6 +15,7 @@ import { eq } from 'drizzle-orm';
 export interface Product {
   id: string;
   lemonSqueezyId: string;
+  slug: string;
   name: string;
   description: string | null;
   price: number;
@@ -61,10 +63,21 @@ export class ProductRepository {
    * Create a new product in the database
    */
   async createProduct(input: CreateProductInput): Promise<Product> {
+    // Generate slug from product name
+    const baseSlug = generateSlug(input.name);
+    
+    // Get existing slugs to ensure uniqueness
+    const existingProducts = await db.select({ slug: products.slug }).from(products);
+    const existingSlugs = existingProducts.map(p => p.slug);
+    
+    // Generate unique slug
+    const slug = generateUniqueSlug(baseSlug, existingSlugs);
+    
     const result = await db
       .insert(products)
       .values({
         lemonSqueezyId: input.lemonSqueezyId,
+        slug,
         name: input.name,
         description: input.description,
         price: input.price,
@@ -89,12 +102,29 @@ export class ProductRepository {
    * Update a product by ID
    */
   async updateProduct(id: string, data: Partial<CreateProductInput>): Promise<Product> {
+    const updateData: any = {
+      ...data,
+      updatedAt: new Date(),
+    };
+    
+    // If name is being updated, regenerate slug
+    if (data.name) {
+      const baseSlug = generateSlug(data.name);
+      
+      // Get existing slugs (excluding current product)
+      const existingProducts = await db
+        .select({ slug: products.slug })
+        .from(products)
+        .where(ne(products.id, id));
+      const existingSlugs = existingProducts.map(p => p.slug);
+      
+      // Generate unique slug
+      updateData.slug = generateUniqueSlug(baseSlug, existingSlugs);
+    }
+    
     const result = await db
       .update(products)
-      .set({
-        ...data,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(products.id, id))
       .returning();
 
@@ -113,6 +143,19 @@ export class ProductRepository {
       .select()
       .from(products)
       .where(eq(products.id, id))
+      .limit(1);
+
+    return result.length > 0 ? result[0] : null;
+  }
+
+  /**
+   * Find a product by its slug
+   */
+  async findBySlug(slug: string): Promise<Product | null> {
+    const result = await db
+      .select()
+      .from(products)
+      .where(eq(products.slug, slug))
       .limit(1);
 
     return result.length > 0 ? result[0] : null;

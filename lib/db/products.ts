@@ -18,22 +18,7 @@ function isProductEnhanced(product: typeof products.$inferSelect): boolean {
 }
 
 /**
- * Helper function to normalize a slug for comparison
- */
-function normalizeSlug(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/['']/g, '') // Remove apostrophes
-    .replace(/[–—]/g, '-') // Replace em/en dashes with hyphens
-    .replace(/[^\w\s-]/g, '') // Remove other special characters
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
-}
-
-/**
  * Get a product by its slug
- * Note: Currently using name as slug since slug field doesn't exist in schema
  */
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   try {
@@ -43,11 +28,8 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
       return null;
     }
 
-    // Normalize the input slug
-    const normalizedSlug = normalizeSlug(slug);
-
-    // Get all products and find matching one by comparing normalized slugs
-    const allProducts = await db
+    // Query product by slug field
+    const result = await db
       .select({
         product: products,
         collection: collections,
@@ -57,29 +39,32 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
       .from(products)
       .leftJoin(collections, eq(products.collectionId, collections.id))
       .leftJoin(occasions, eq(products.occasionId, occasions.id))
-      .leftJoin(productTypes, eq(products.productTypeId, productTypes.id));
+      .leftJoin(productTypes, eq(products.productTypeId, productTypes.id))
+      .where(and(
+        eq(products.slug, slug),
+        isNotNull(products.collectionId) // Only enhanced products
+      ))
+      .limit(1);
 
-    const matchingProduct = allProducts.find(
-      row => normalizeSlug(row.product.name) === normalizedSlug && isProductEnhanced(row.product)
-    );
-
-    if (!matchingProduct) {
-      console.log(`No enhanced product found for slug: ${slug} (normalized: ${normalizedSlug})`);
+    if (result.length === 0) {
+      console.log(`No enhanced product found for slug: ${slug}`);
       return null;
     }
+    
+    const row = result[0];
     
     // Get formats for this product
     const productFormatRows = await db
       .select({ format: formats })
       .from(productFormats)
       .innerJoin(formats, eq(productFormats.formatId, formats.id))
-      .where(eq(productFormats.productId, matchingProduct.product.id));
+      .where(eq(productFormats.productId, row.product.id));
 
     return mapToStorefrontProduct(
-      matchingProduct.product,
-      matchingProduct.collection,
-      matchingProduct.occasion,
-      matchingProduct.productType,
+      row.product,
+      row.collection,
+      row.occasion,
+      row.productType,
       productFormatRows.map(r => r.format)
     );
   } catch (error) {
@@ -93,9 +78,6 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
  */
 export async function getProductsByCollection(collectionSlug: string): Promise<Product[]> {
   try {
-    // Convert slug to title format (replace hyphens with spaces)
-    const titleFromSlug = collectionSlug.split('-').join(' ');
-
     // Get all products with their collections
     const result = await db
       .select({
@@ -108,16 +90,13 @@ export async function getProductsByCollection(collectionSlug: string): Promise<P
       .innerJoin(collections, eq(products.collectionId, collections.id))
       .leftJoin(occasions, eq(products.occasionId, occasions.id))
       .leftJoin(productTypes, eq(products.productTypeId, productTypes.id))
+      .where(and(
+        eq(collections.slug, collectionSlug),
+        isNotNull(products.collectionId) // Only enhanced products
+      ))
       .orderBy(desc(products.createdAt));
 
-    // Filter by collection title (case-insensitive) and only enhanced products
-    const matchingProducts = result.filter(
-      row => row.collection && 
-             row.collection.title.toLowerCase() === titleFromSlug.toLowerCase() &&
-             isProductEnhanced(row.product)
-    );
-
-    return Promise.all(matchingProducts.map(async (row) => {
+    return Promise.all(result.map(async (row) => {
       const productFormatRows = await db
         .select({ format: formats })
         .from(productFormats)
@@ -306,15 +285,8 @@ function mapToStorefrontProduct(
   productType: typeof productTypes.$inferSelect | null,
   productFormats: (typeof formats.$inferSelect)[]
 ): Product {
-  // Generate slug from name - remove special characters, convert to lowercase, replace spaces with hyphens
-  const slug = product.name
-    .toLowerCase()
-    .replace(/['']/g, '') // Remove apostrophes
-    .replace(/[–—]/g, '-') // Replace em/en dashes with hyphens
-    .replace(/[^\w\s-]/g, '') // Remove other special characters
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
-    .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-    .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+  // Use the slug from database
+  const slug = product.slug;
 
   // Map images to ProductImage format
   const images = product.images.map((url, index) => ({

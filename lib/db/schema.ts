@@ -4,6 +4,7 @@ import { pgTable, text, timestamp, real, boolean, uuid, index, primaryKey } from
 export const products = pgTable('products', {
   id: uuid('id').defaultRandom().primaryKey(),
   lemonSqueezyId: text('lemon_squeezy_id').unique().notNull(),
+  slug: text('slug').unique().notNull(),
   name: text('name').notNull(),
   description: text('description'),
   price: real('price').notNull(),
@@ -19,6 +20,7 @@ export const products = pgTable('products', {
   collectionId: uuid('collection_id').references(() => collections.id),
 }, (table) => ({
   // Indexes for better query performance
+  slugIdx: index('products_slug_idx').on(table.slug),
   productTypeIdx: index('product_type_idx').on(table.productTypeId),
   occasionIdx: index('occasion_idx').on(table.occasionId),
   collectionIdx: index('collection_idx').on(table.collectionId),
@@ -53,20 +55,26 @@ export const productFormats = pgTable('product_formats', {
 // Occasions table (Complex Taxonomy)
 export const occasions = pgTable('occasions', {
   id: uuid('id').defaultRandom().primaryKey(),
+  slug: text('slug').unique().notNull(),
   title: text('title').unique().notNull(),
   description: text('description').notNull(),
   imageUrl: text('image_url').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  slugIdx: index('occasions_slug_idx').on(table.slug),
+}));
 
 // Collections table (Complex Taxonomy)
 export const collections = pgTable('collections', {
   id: uuid('id').defaultRandom().primaryKey(),
+  slug: text('slug').unique().notNull(),
   title: text('title').unique().notNull(),
   description: text('description').notNull(),
   imageUrl: text('image_url').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+}, (table) => ({
+  slugIdx: index('collections_slug_idx').on(table.slug),
+}));
 
 // Sessions table for authentication
 export const sessions = pgTable('sessions', {
