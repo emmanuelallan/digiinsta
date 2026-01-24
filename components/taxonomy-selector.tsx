@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { HugeiconsIcon } from "@hugeicons/react"
-import { Add01Icon } from "@hugeicons/core-free-icons"
+import { Add01Icon, PencilEdit02Icon } from "@hugeicons/core-free-icons"
 import { cn } from "@/lib/utils"
 
 export type TaxonomyType = 'product_type' | 'format' | 'occasion' | 'collection'
@@ -23,6 +23,7 @@ export interface TaxonomySelectorProps {
   options: TaxonomyOption[]
   multiple?: boolean
   onAddNew: () => void
+  onEdit?: (id: string) => void
   className?: string
 }
 
@@ -41,6 +42,7 @@ export function TaxonomySelector({
   options,
   multiple = false,
   onAddNew,
+  onEdit,
   className
 }: TaxonomySelectorProps) {
   const [selectedValues, setSelectedValues] = React.useState<Set<string>>(
@@ -114,6 +116,17 @@ export function TaxonomySelector({
             )}
           </SelectContent>
         </Select>
+        {onEdit && selectValue && !multiple && (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={() => onEdit(selectValue)}
+            title={`Edit ${label || taxonomyLabels[type]}`}
+          >
+            <HugeiconsIcon icon={PencilEdit02Icon} strokeWidth={2} />
+          </Button>
+        )}
         <Button
           type="button"
           variant="outline"

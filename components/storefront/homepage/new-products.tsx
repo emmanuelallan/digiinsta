@@ -48,8 +48,8 @@ function ProductCard({ product }: { product: Product }) {
   const [isHovered, setIsHovered] = useState(false);
   
   // Get first two images for hover effect
-  const primaryImage = product.images[0];
-  const secondaryImage = product.images[1] || product.images[0];
+  const primaryImage = product.images[0] || null;
+  const secondaryImage = product.images[1] || product.images[0] || null;
   
   // Get badge if exists
   const badge = product.badges[0];
@@ -74,26 +74,46 @@ function ProductCard({ product }: { product: Product }) {
           )}
           
           {/* Primary Image */}
-          <Image
-            src={primaryImage?.url || '/placeholder.jpg'}
-            alt={product.name}
-            fill
-            className={cn(
-              "object-cover transition-opacity duration-300",
-              isHovered ? "opacity-0" : "opacity-100"
-            )}
-          />
+          {primaryImage ? (
+            <Image
+              src={primaryImage.url}
+              alt={product.name}
+              fill
+              className={cn(
+                "object-cover transition-opacity duration-300",
+                isHovered && secondaryImage ? "opacity-0" : "opacity-100"
+              )}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gray-100">
+              <svg
+                className="h-16 w-16 text-gray-300"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z"
+                />
+              </svg>
+            </div>
+          )}
           
           {/* Secondary Image (shown on hover) */}
-          <Image
-            src={secondaryImage?.url || '/placeholder.jpg'}
-            alt={product.name}
-            fill
-            className={cn(
-              "object-cover transition-opacity duration-300",
-              isHovered ? "opacity-100" : "opacity-0"
-            )}
-          />
+          {secondaryImage && primaryImage && (
+            <Image
+              src={secondaryImage.url}
+              alt={product.name}
+              fill
+              className={cn(
+                "object-cover transition-opacity duration-300",
+                isHovered ? "opacity-100" : "opacity-0"
+              )}
+            />
+          )}
         </div>
 
         {/* Product Info */}

@@ -160,3 +160,19 @@
     animation-play-state: paused;
   }
 }
+
+/* Navigation Menu Positioning Fix */
+[data-slot="navigation-menu-viewport"] {
+  left: 50% !important;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 3rem);
+}
+
+/* Prevent horizontal scroll from navigation menu */
+body {
+  overflow-x: hidden;
+}
+
+nav {
+  overflow: visible;
+}

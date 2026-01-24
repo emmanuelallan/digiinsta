@@ -28,9 +28,16 @@ export interface ComplexTaxonomyInput {
 
 export interface TaxonomyDialogProps {
   type: TaxonomyType
+  mode?: 'create' | 'edit'
+  initialData?: {
+    id: string
+    title: string
+    description?: string
+    imageUrl?: string
+  }
   isOpen: boolean
   onClose: () => void
-  onSave: (data: SimpleTaxonomyInput | ComplexTaxonomyInput) => Promise<void>
+  onSave: (data: SimpleTaxonomyInput | ComplexTaxonomyInput, id?: string) => Promise<void>
 }
 
 const taxonomyLabels: Record<TaxonomyType, string> = {
@@ -46,6 +53,8 @@ const isComplexTaxonomy = (type: TaxonomyType): boolean => {
 
 export function TaxonomyDialog({
   type,
+  mode = 'create',
+  initialData,
   isOpen,
   onClose,
   onSave
@@ -53,16 +62,29 @@ export function TaxonomyDialog({
   const [title, setTitle] = React.useState("")
   const [description, setDescription] = React.useState("")
   const [image, setImage] = React.useState<File | null>(null)
+  const [existingImageUrl, setExistingImageUrl] = React.useState<string>("")
   const [errors, setErrors] = React.useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
   const isComplex = isComplexTaxonomy(type)
 
+  // Initialize form with existing data in edit mode
+  React.useEffect(() => {
+    if (mode === 'edit' && initialData) {
+      setTitle(initialData.title)
+      setDescription(initialData.description || "")
+      setExistingImageUrl(initialData.imageUrl || "")
+    }
+  }, [mode, initialData])
+
   const resetForm = () => {
-    setTitle("")
-    setDescription("")
-    setImage(null)
+    if (mode === 'create') {
+      setTitle("")
+      setDescription("")
+      setImage(null)
+      setExistingImageUrl("")
+    }
     setErrors({})
     setIsSubmitting(false)
     if (fileInputRef.current) {
@@ -103,7 +125,8 @@ export function TaxonomyDialog({
       if (!description.trim()) {
         newErrors.description = "Description is required"
       }
-      if (!image) {
+      // In edit mode, image is optional if there's an existing image
+      if (mode === 'create' && !image) {
         newErrors.image = "Image is required"
       }
     }
@@ -151,16 +174,29 @@ export function TaxonomyDialog({
     setIsSubmitting(true)
 
     try {
-      if (isComplex && image) {
-        await onSave({
-          title: title.trim(),
-          description: description.trim(),
-          image
-        } as ComplexTaxonomyInput)
+      const taxonomyId = mode === 'edit' && initialData ? initialData.id : undefined
+
+      if (isComplex) {
+        // For complex taxonomies, always include title and description
+        // Image is optional in edit mode if not changed
+        if (image) {
+          await onSave({
+            title: title.trim(),
+            description: description.trim(),
+            image
+          } as ComplexTaxonomyInput, taxonomyId)
+        } else {
+          // In edit mode without new image, send existing data
+          await onSave({
+            title: title.trim(),
+            description: description.trim(),
+            image: null as any // Will be handled by API
+          } as ComplexTaxonomyInput, taxonomyId)
+        }
       } else {
         await onSave({
           title: title.trim()
-        } as SimpleTaxonomyInput)
+        } as SimpleTaxonomyInput, taxonomyId)
       }
       handleClose()
     } catch (error) {
@@ -177,12 +213,14 @@ export function TaxonomyDialog({
       <AlertDialogContent size="default">
         <AlertDialogHeader>
           <AlertDialogTitle>
-            Add New {taxonomyLabels[type]}
+            {mode === 'edit' ? `Edit ${taxonomyLabels[type]}` : `Add New ${taxonomyLabels[type]}`}
           </AlertDialogTitle>
           <AlertDialogDescription>
-            {isComplex 
-              ? `Create a new ${taxonomyLabels[type].toLowerCase()} with title, description, and image.`
-              : `Create a new ${taxonomyLabels[type].toLowerCase()}.`
+            {mode === 'edit' 
+              ? `Update the ${taxonomyLabels[type].toLowerCase()} details.`
+              : isComplex 
+                ? `Create a new ${taxonomyLabels[type].toLowerCase()} with title, description, and image.`
+                : `Create a new ${taxonomyLabels[type].toLowerCase()}.`
             }
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -247,8 +285,19 @@ export function TaxonomyDialog({
           {isComplex && (
             <div className="grid gap-2">
               <Label htmlFor="taxonomy-image">
-                Image <span className="text-destructive">*</span>
+                Image {mode === 'create' && <span className="text-destructive">*</span>}
+                {mode === 'edit' && <span className="text-muted-foreground text-xs ml-1">(optional - leave empty to keep current)</span>}
               </Label>
+              {existingImageUrl && !image && (
+                <div className="mb-2">
+                  <p className="text-sm text-muted-foreground mb-1">Current image:</p>
+                  <img 
+                    src={existingImageUrl} 
+                    alt="Current" 
+                    className="w-32 h-32 object-cover rounded border"
+                  />
+                </div>
+              )}
               <Input
                 ref={fileInputRef}
                 id="taxonomy-image"
@@ -260,7 +309,7 @@ export function TaxonomyDialog({
               />
               {image && (
                 <p className="text-sm text-muted-foreground">
-                  Selected: {image.name} ({(image.size / 1024).toFixed(2)} KB)
+                  New image selected: {image.name} ({(image.size / 1024).toFixed(2)} KB)
                 </p>
               )}
               {errors.image && (
@@ -285,7 +334,7 @@ export function TaxonomyDialog({
             onClick={handleSave}
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Saving..." : "Save"}
+            {isSubmitting ? "Saving..." : mode === 'edit' ? "Update" : "Save"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

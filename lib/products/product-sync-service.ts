@@ -39,10 +39,13 @@ export class ProductSyncService {
    * 
    * This method:
    * 1. Fetches all products from Lemon Squeezy API
-   * 2. For each product, fetches all associated images
-   * 3. Checks for duplicates using Lemon Squeezy ID
-   * 4. Inserts new products and skips existing ones
+   * 2. Checks for duplicates using Lemon Squeezy ID
+   * 3. Inserts new products with empty images array (admin will upload custom images)
+   * 4. Skips existing products
    * 5. Returns a summary of the sync operation
+   * 
+   * Note: Product images are NOT synced from Lemon Squeezy.
+   * Admins must upload custom high-quality images via the admin panel.
    */
   async syncProducts(): Promise<SyncResult> {
     const result: SyncResult = {
@@ -95,7 +98,8 @@ export class ProductSyncService {
 
   /**
    * Sync a single product from Lemon Squeezy
-   * Handles duplicate detection and image fetching
+   * Handles duplicate detection
+   * Note: Images are NOT synced from Lemon Squeezy - admins must upload custom images
    */
   private async syncSingleProduct(
     lsProduct: LemonSqueezyProduct,
@@ -112,9 +116,6 @@ export class ProductSyncService {
       return;
     }
 
-    // Fetch all images for this product
-    const images = await this.lemonSqueezyClient.fetchProductImages(lsProduct.id);
-
     // Extract currency from price_formatted (e.g., "$10.00" -> "USD")
     // Default to USD if we can't determine the currency
     const currency = this.extractCurrency(lsProduct.attributes.price_formatted);
@@ -123,14 +124,15 @@ export class ProductSyncService {
     // Lemon Squeezy API returns prices in cents (e.g., 2999 = $29.99)
     const priceInDollars = lsProduct.attributes.price / 100;
 
-    // Create new product in database
+    // Create new product in database with empty images array
+    // Admin will upload custom images via the admin panel
     await this.productRepository.createProduct({
       lemonSqueezyId: lsProduct.id,
       name: lsProduct.attributes.name,
       description: lsProduct.attributes.description || null,
       price: priceInDollars,
       currency: currency,
-      images: images,
+      images: [], // Empty array - admin will upload custom images
       buyNowUrl: lsProduct.attributes.buy_now_url,
     });
 

@@ -24,7 +24,7 @@ export function CollectionCards({
   return (
     <section className={cn("py-16 bg-white", className)}>
       <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="grid gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid gap-6 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           {collections.map((collection) => (
             <Link
               key={collection.slug}
@@ -33,7 +33,7 @@ export function CollectionCards({
             >
               <div className="space-y-3">
                 {/* Collection Image */}
-                <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-gray-100">
+                <div className="relative aspect-[1/1] overflow-hidden rounded-lg bg-gray-100">
                   <Image
                     src={collection.icon}
                     alt={collection.name}
@@ -44,7 +44,7 @@ export function CollectionCards({
 
                 {/* Title and Arrow Below */}
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-gray-900">
+                  <h3 className="text-base font-semibold text-gray-900">
                     {collection.name}
                   </h3>
                   <HugeiconsIcon

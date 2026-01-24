@@ -68,7 +68,7 @@ export function Header() {
                 Shop
               </NavigationMenuTrigger>
               <NavigationMenuContent>
-                <div className="w-[800px] p-8 bg-white">
+                <div className="w-[min(800px,calc(100vw-3rem))] p-8 bg-white">
                   {isLoading ? (
                     <div className="flex items-center justify-center py-12">
                       <div className="text-gray-500">Loading collections...</div>

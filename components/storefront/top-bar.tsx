@@ -6,7 +6,7 @@ export default function TopBar() {
       <p className="text-center text-sm uppercase">
         digital delivery + free gifts —{" "}
         <Link
-          href="/ocassions/valentines"
+          href="/collections/valentines"
           className="font-bold after:content-['_→'] after:ml-2 underline hover:no-underline"
         >
           The Ultimate Valentine&apos;s Gift

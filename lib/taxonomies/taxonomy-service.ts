@@ -135,4 +135,58 @@ export class TaxonomyService {
   async getTaxonomyById(type: TaxonomyType, id: string) {
     return await this.repository.getTaxonomyById(type, id);
   }
+
+  /**
+   * Update a simple taxonomy (Product Type or Format)
+   */
+  async updateSimpleTaxonomy(
+    type: 'product_type' | 'format',
+    id: string,
+    title: string
+  ): Promise<SimpleTaxonomy> {
+    // Validate title
+    if (!title || title.trim().length === 0) {
+      throw new Error('Title is required');
+    }
+
+    return await this.repository.updateSimpleTaxonomy(type, id, title.trim());
+  }
+
+  /**
+   * Update a complex taxonomy (Occasion or Collection)
+   */
+  async updateComplexTaxonomy(
+    type: 'occasion' | 'collection',
+    id: string,
+    data: ComplexTaxonomyInput & { keepExistingImage?: boolean }
+  ): Promise<ComplexTaxonomy> {
+    // Validate required fields
+    if (!data.title || data.title.trim().length === 0) {
+      throw new Error('Title is required');
+    }
+    if (!data.description || data.description.trim().length === 0) {
+      throw new Error('Description is required');
+    }
+
+    let imageUrl: string | undefined;
+
+    // Upload new image if provided
+    if (data.image && !data.keepExistingImage) {
+      imageUrl = await this.uploadTaxonomyImage(data.image);
+    }
+
+    // Update taxonomy in database
+    return await this.repository.updateComplexTaxonomy(type, id, {
+      title: data.title.trim(),
+      description: data.description.trim(),
+      imageUrl,
+    });
+  }
+
+  /**
+   * Delete a taxonomy
+   */
+  async deleteTaxonomy(type: TaxonomyType, id: string): Promise<void> {
+    return await this.repository.deleteTaxonomy(type, id);
+  }
 }

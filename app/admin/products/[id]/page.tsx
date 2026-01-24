@@ -51,6 +51,13 @@ type TaxonomyType = 'product_type' | 'format' | 'occasion' | 'collection';
 interface DialogState {
   isOpen: boolean;
   type: TaxonomyType | null;
+  mode: 'create' | 'edit';
+  editData?: {
+    id: string;
+    title: string;
+    description?: string;
+    imageUrl?: string;
+  };
 }
 
 export default function ProductEditPage({ params }: { params: Promise<{ id: string }> }) {
@@ -79,6 +86,7 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
   const [dialogState, setDialogState] = useState<DialogState>({
     isOpen: false,
     type: null,
+    mode: 'create',
   });
 
   // Unwrap params
@@ -140,32 +148,71 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
 
   // Handle opening taxonomy dialog
   const handleOpenDialog = (type: TaxonomyType) => {
-    setDialogState({ isOpen: true, type });
+    setDialogState({ isOpen: true, type, mode: 'create' });
+  };
+
+  // Handle opening edit dialog
+  const handleEditTaxonomy = async (type: TaxonomyType, id: string) => {
+    try {
+      // Fetch the taxonomy data
+      const response = await fetch(`/api/taxonomies/${type === 'product_type' ? 'product-types' : type === 'format' ? 'formats' : type === 'occasion' ? 'occasions' : 'collections'}/${id}`);
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch taxonomy');
+      }
+
+      const data = await response.json();
+      const taxonomy = data.productType || data.format || data.occasion || data.collection;
+
+      setDialogState({
+        isOpen: true,
+        type,
+        mode: 'edit',
+        editData: {
+          id: taxonomy.id,
+          title: taxonomy.title,
+          description: taxonomy.description,
+          imageUrl: taxonomy.imageUrl,
+        },
+      });
+    } catch (error) {
+      console.error('Error fetching taxonomy for edit:', error);
+      toast.error('Failed to load taxonomy data');
+    }
   };
 
   // Handle closing taxonomy dialog
   const handleCloseDialog = () => {
-    setDialogState({ isOpen: false, type: null });
+    setDialogState({ isOpen: false, type: null, mode: 'create' });
   };
 
-  // Handle saving new taxonomy
-  const handleSaveTaxonomy = async (data: SimpleTaxonomyInput | ComplexTaxonomyInput) => {
+  // Handle saving new or updated taxonomy
+  const handleSaveTaxonomy = async (data: SimpleTaxonomyInput | ComplexTaxonomyInput, taxonomyId?: string) => {
     if (!dialogState.type) return;
 
     try {
       const type = dialogState.type;
+      const isEdit = dialogState.mode === 'edit' && taxonomyId;
       let response;
 
       // Determine endpoint and prepare request
       if (type === 'product_type') {
-        response = await fetch('/api/taxonomies/product-types', {
-          method: 'POST',
+        const endpoint = isEdit 
+          ? `/api/taxonomies/product-types/${taxonomyId}`
+          : '/api/taxonomies/product-types';
+        
+        response = await fetch(endpoint, {
+          method: isEdit ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title: (data as SimpleTaxonomyInput).title }),
         });
       } else if (type === 'format') {
-        response = await fetch('/api/taxonomies/formats', {
-          method: 'POST',
+        const endpoint = isEdit 
+          ? `/api/taxonomies/formats/${taxonomyId}`
+          : '/api/taxonomies/formats';
+        
+        response = await fetch(endpoint, {
+          method: isEdit ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title: (data as SimpleTaxonomyInput).title }),
         });
@@ -174,10 +221,16 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
         const complexData = data as ComplexTaxonomyInput;
         formData.append('title', complexData.title);
         formData.append('description', complexData.description);
-        formData.append('image', complexData.image);
+        if (complexData.image) {
+          formData.append('image', complexData.image);
+        }
 
-        response = await fetch('/api/taxonomies/occasions', {
-          method: 'POST',
+        const endpoint = isEdit 
+          ? `/api/taxonomies/occasions/${taxonomyId}`
+          : '/api/taxonomies/occasions';
+
+        response = await fetch(endpoint, {
+          method: isEdit ? 'PUT' : 'POST',
           body: formData,
         });
       } else if (type === 'collection') {
@@ -185,49 +238,72 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
         const complexData = data as ComplexTaxonomyInput;
         formData.append('title', complexData.title);
         formData.append('description', complexData.description);
-        formData.append('image', complexData.image);
+        if (complexData.image) {
+          formData.append('image', complexData.image);
+        }
 
-        response = await fetch('/api/taxonomies/collections', {
-          method: 'POST',
+        const endpoint = isEdit 
+          ? `/api/taxonomies/collections/${taxonomyId}`
+          : '/api/taxonomies/collections';
+
+        response = await fetch(endpoint, {
+          method: isEdit ? 'PUT' : 'POST',
           body: formData,
         });
       }
 
       if (!response) {
-        throw new Error('Failed to create taxonomy');
+        throw new Error('Failed to save taxonomy');
       }
 
       const result = await response.json();
 
       if (result.success) {
-        // Get the created taxonomy
-        const newTaxonomy = result.productType || result.format || result.occasion || result.collection;
+        // Get the created/updated taxonomy
+        const taxonomy = result.productType || result.format || result.occasion || result.collection;
 
-        // Update the appropriate taxonomy list and cache
-        if (type === 'product_type') {
-          setProductTypes((prev) => [...prev, newTaxonomy]);
-          setProductTypeId(newTaxonomy.id);
-          addToCache('product_type', newTaxonomy);
-        } else if (type === 'format') {
-          setFormats((prev) => [...prev, newTaxonomy]);
-          setFormatIds((prev) => [...prev, newTaxonomy.id]);
-          addToCache('format', newTaxonomy);
-        } else if (type === 'occasion') {
-          setOccasions((prev) => [...prev, newTaxonomy]);
-          setOccasionId(newTaxonomy.id);
-          addToCache('occasion', newTaxonomy);
-        } else if (type === 'collection') {
-          setCollections((prev) => [...prev, newTaxonomy]);
-          setCollectionId(newTaxonomy.id);
-          addToCache('collection', newTaxonomy);
+        if (isEdit) {
+          // Update existing taxonomy in lists
+          if (type === 'product_type') {
+            setProductTypes((prev) => prev.map(t => t.id === taxonomyId ? taxonomy : t));
+            addToCache('product_type', taxonomy);
+          } else if (type === 'format') {
+            setFormats((prev) => prev.map(t => t.id === taxonomyId ? taxonomy : t));
+            addToCache('format', taxonomy);
+          } else if (type === 'occasion') {
+            setOccasions((prev) => prev.map(t => t.id === taxonomyId ? taxonomy : t));
+            addToCache('occasion', taxonomy);
+          } else if (type === 'collection') {
+            setCollections((prev) => prev.map(t => t.id === taxonomyId ? taxonomy : t));
+            addToCache('collection', taxonomy);
+          }
+          toast.success(`${type.replace('_', ' ')} updated successfully`);
+        } else {
+          // Add new taxonomy to lists
+          if (type === 'product_type') {
+            setProductTypes((prev) => [...prev, taxonomy]);
+            setProductTypeId(taxonomy.id);
+            addToCache('product_type', taxonomy);
+          } else if (type === 'format') {
+            setFormats((prev) => [...prev, taxonomy]);
+            setFormatIds((prev) => [...prev, taxonomy.id]);
+            addToCache('format', taxonomy);
+          } else if (type === 'occasion') {
+            setOccasions((prev) => [...prev, taxonomy]);
+            setOccasionId(taxonomy.id);
+            addToCache('occasion', taxonomy);
+          } else if (type === 'collection') {
+            setCollections((prev) => [...prev, taxonomy]);
+            setCollectionId(taxonomy.id);
+            addToCache('collection', taxonomy);
+          }
+          toast.success(`${type.replace('_', ' ')} created successfully`);
         }
-
-        toast.success(`${type.replace('_', ' ')} created successfully`);
       } else {
-        throw new Error(result.error || 'Failed to create taxonomy');
+        throw new Error(result.error || 'Failed to save taxonomy');
       }
     } catch (error) {
-      console.error('Error creating taxonomy:', error);
+      console.error('Error saving taxonomy:', error);
       throw error; // Re-throw to let dialog handle it
     }
   };
@@ -440,13 +516,36 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
                   {product.images.length} / 5 images
                 </span>
               </div>
-              <ImageCarousel images={product.images} alt={product.name} />
+              
+              {product.images.length === 0 ? (
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50">
+                  <svg
+                    className="mx-auto h-12 w-12 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <p className="mt-2 text-sm font-medium text-gray-900">No images uploaded</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Upload high-quality images for your product (up to 5 images)
+                  </p>
+                </div>
+              ) : (
+                <ImageCarousel images={product.images} alt={product.name} />
+              )}
               
               {/* Image Upload */}
               {product.images.length < 5 && (
                 <div className="mt-4">
                   <label htmlFor="image-upload" className="block text-sm font-medium mb-2">
-                    Add More Images (max 5 total)
+                    {product.images.length === 0 ? 'Upload Product Images' : 'Add More Images'} (max 5 total)
                   </label>
                   <input
                     id="image-upload"
@@ -459,6 +558,9 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
                   />
                   <p className="text-xs text-muted-foreground mt-1">
                     Allowed formats: JPEG, PNG, WebP. Max size: 5MB per image.
+                  </p>
+                  <p className="text-xs text-amber-600 mt-1">
+                    <strong>Note:</strong> Upload custom high-quality images. Lemon Squeezy images are not used on the website.
                   </p>
                 </div>
               )}
@@ -516,6 +618,7 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
                 onChange={(value) => setProductTypeId(value as string)}
                 options={productTypes}
                 onAddNew={() => handleOpenDialog('product_type')}
+                onEdit={(id) => handleEditTaxonomy('product_type', id)}
               />
 
               {/* Formats */}
@@ -537,6 +640,7 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
                 onChange={(value) => setOccasionId(value as string)}
                 options={occasions}
                 onAddNew={() => handleOpenDialog('occasion')}
+                onEdit={(id) => handleEditTaxonomy('occasion', id)}
               />
 
               {/* Collection */}
@@ -547,6 +651,7 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
                 onChange={(value) => setCollectionId(value as string)}
                 options={collections}
                 onAddNew={() => handleOpenDialog('collection')}
+                onEdit={(id) => handleEditTaxonomy('collection', id)}
               />
             </fieldset>
 
@@ -569,6 +674,8 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
       {dialogState.type && (
         <TaxonomyDialog
           type={dialogState.type}
+          mode={dialogState.mode}
+          initialData={dialogState.editData}
           isOpen={dialogState.isOpen}
           onClose={handleCloseDialog}
           onSave={handleSaveTaxonomy}

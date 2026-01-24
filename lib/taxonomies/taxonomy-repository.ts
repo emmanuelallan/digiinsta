@@ -111,4 +111,79 @@ export class TaxonomyRepository {
 
     return results.length > 0 ? results[0] : null;
   }
+
+  /**
+   * Update a simple taxonomy (Product Type or Format)
+   */
+  async updateSimpleTaxonomy(
+    type: 'product_type' | 'format',
+    id: string,
+    title: string
+  ): Promise<SimpleTaxonomy> {
+    const table = type === 'product_type' ? productTypes : formats;
+    
+    const [result] = await db
+      .update(table)
+      .set({ title })
+      .where(eq(table.id, id))
+      .returning();
+
+    return result;
+  }
+
+  /**
+   * Update a complex taxonomy (Occasion or Collection)
+   */
+  async updateComplexTaxonomy(
+    type: 'occasion' | 'collection',
+    id: string,
+    data: { title: string; description: string; imageUrl?: string }
+  ): Promise<ComplexTaxonomy> {
+    const table = type === 'occasion' ? occasions : collections;
+    
+    const updateData: any = {
+      title: data.title,
+      description: data.description,
+    };
+
+    // Only update imageUrl if provided
+    if (data.imageUrl) {
+      updateData.imageUrl = data.imageUrl;
+    }
+    
+    const [result] = await db
+      .update(table)
+      .set(updateData)
+      .where(eq(table.id, id))
+      .returning();
+
+    return result;
+  }
+
+  /**
+   * Delete a taxonomy by ID
+   */
+  async deleteTaxonomy(
+    type: TaxonomyType,
+    id: string
+  ): Promise<void> {
+    let table;
+    
+    switch (type) {
+      case 'product_type':
+        table = productTypes;
+        break;
+      case 'format':
+        table = formats;
+        break;
+      case 'occasion':
+        table = occasions;
+        break;
+      case 'collection':
+        table = collections;
+        break;
+    }
+
+    await db.delete(table).where(eq(table.id, id));
+  }
 }
