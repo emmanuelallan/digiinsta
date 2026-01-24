@@ -84,11 +84,6 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
-  verification: {
-    google: "your-google-verification-code",
-    // yandex: "your-yandex-verification-code",
-    // bing: "your-bing-verification-code",
-  },
 };
 
 export default function RootLayout({
