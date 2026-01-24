@@ -113,7 +113,7 @@ export default async function HomePage() {
           ctaHref="/collections/valentines"
         />
 
-        <CollectionCards collections={collections.slice(0, 4)} />
+        <CollectionCards collections={collections} />
 
         {valentineProducts.length > 0 && (
           <ValentineHighlight featuredProducts={valentineProducts} />
