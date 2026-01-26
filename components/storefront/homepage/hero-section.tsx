@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+// import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react"
@@ -17,17 +17,17 @@ interface HeroSectionProps {
   className?: string;
 }
 
-const brandLogos = [
-  { name: "Brand 1", src: "/images/brands/logo1.svg" },
-  { name: "Brand 2", src: "/images/brands/logo2.svg" },
-  { name: "Brand 3", src: "/images/brands/logo3.svg" },
-  { name: "Brand 4", src: "/images/brands/logo4.svg" },
-  { name: "Brand 5", src: "/images/brands/logo5.svg" },
-  { name: "Brand 6", src: "/images/brands/logo6.svg" },
-  { name: "Brand 7", src: "/images/brands/logo7.svg" },
-  { name: "Brand 8", src: "/images/brands/logo8.svg" },
-  { name: "Brand 9", src: "/images/brands/logo9.svg" },
-];
+// const brandLogos = [
+//   { name: "Brand 1", src: "/images/brands/logo1.svg" },
+//   { name: "Brand 2", src: "/images/brands/logo2.svg" },
+//   { name: "Brand 3", src: "/images/brands/logo3.svg" },
+//   { name: "Brand 4", src: "/images/brands/logo4.svg" },
+//   { name: "Brand 5", src: "/images/brands/logo5.svg" },
+//   { name: "Brand 6", src: "/images/brands/logo6.svg" },
+//   { name: "Brand 7", src: "/images/brands/logo7.svg" },
+//   { name: "Brand 8", src: "/images/brands/logo8.svg" },
+//   { name: "Brand 9", src: "/images/brands/logo9.svg" },
+// ];
 
 export function HeroSection({
   headline = "The Ultimate Valentine's Gift",
@@ -41,7 +41,7 @@ export function HeroSection({
   return (
     <>
       {/* Hero Section */}
-      <section className={cn("relative w-full h-[calc(100vh-150px)] overflow-hidden", className)} aria-label="Hero banner">
+      <section className={cn("relative w-full h-[calc(100vh-300px)] overflow-hidden", className)} aria-label="Hero banner">
         {/* Video Background */}
         <video
           autoPlay
@@ -74,7 +74,7 @@ export function HeroSection({
               <Link href={ctaHref}>
                 <Button
                   size="lg"
-                  className="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-semibold uppercase rounded-full p-8 cursor-pointer gap-2 text-base"
+                  className="bg-pink-400 hover:bg-pink-500 text-white font-semibold uppercase rounded-full p-8 cursor-pointer gap-2 text-base"
                 >
                   {ctaText}
                   <HugeiconsIcon icon={ArrowRight01Icon} size={20} />
@@ -86,7 +86,7 @@ export function HeroSection({
       </section>
 
       {/* Logo Marquee Section */}
-      <section className="bg-gray-900 py-6 overflow-hidden" aria-label="Featured in">
+      {/* <section className="bg-gray-900 py-6 overflow-hidden" aria-label="Featured in">
         <div className="flex animate-marquee whitespace-nowrap">
           <div className="flex gap-12 shrink-0 pr-12">
             {brandLogos.map((logo, index) => (
@@ -137,7 +137,7 @@ export function HeroSection({
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
     </>
   );
 }

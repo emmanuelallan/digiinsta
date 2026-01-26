@@ -42,10 +42,36 @@ export function Header() {
 
     fetchCollections();
   }, []);
+
+  // Get first 4 collections for left menu
+  const menuCollections = collections.slice(0, 4);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
-        {/* Logo */}
+        {/* Left - Collection Links */}
+        <div className="hidden lg:flex items-center gap-6">
+          {isLoading ? (
+            // Loading skeleton
+            <>
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+              ))}
+            </>
+          ) : (
+            menuCollections.map((collection) => (
+              <Link
+                key={collection.id}
+                href={`/collections/${collection.slug}`}
+                className="uppercase text-sm font-bold text-gray-900 hover:text-pink-600 data-[state=open]:text-pink-600"
+              >
+                {collection.title}
+              </Link>
+            ))
+          )}
+        </div>
+
+        {/* Center - Logo */}
         <Link
           href="/"
           className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2 rounded-md"
@@ -59,7 +85,7 @@ export function Header() {
           <span className="sr-only">Digital love for the heart</span>
         </Link>
 
-        {/* Desktop Navigation */}
+        {/* Right - Shop Dropdown & Other Links */}
         <NavigationMenu className="hidden lg:flex">
           <NavigationMenuList className="gap-1">
             {/* Shop Mega Dropdown */}

@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { ArrowRight01Icon } from "@hugeicons/core-free-icons";
 import { getProductBySlug, getRelatedProducts } from "@/lib/db/products";
 import { Button } from "@/components/ui/button";
+import { ImageCarousel } from "@/components/image-carousel";
+import { ProductDetailsSection } from "@/components/storefront/products/product-details-section";
+import Image from "next/image";
 
 interface ProductPageProps {
   params: Promise<{
@@ -147,34 +149,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
           {/* Product Details */}
           <div className="py-12">
             <div className="grid gap-12 lg:grid-cols-2">
-              {/* Product Images */}
-              <div className="space-y-4">
-                <div className="relative aspect-square overflow-hidden rounded-lg bg-gray-100">
-                  <Image
-                    src={product.images[0]?.url || "/placeholder.webp"}
-                    alt={product.name}
-                    fill
-                    className="object-cover"
-                    priority
-                  />
-                </div>
-                {product.images.length > 1 && (
-                  <div className="grid grid-cols-4 gap-4">
-                    {product.images.slice(1, 5).map((image, index) => (
-                      <div
-                        key={index}
-                        className="relative aspect-square overflow-hidden rounded-lg bg-gray-100"
-                      >
-                        <Image
-                          src={image.url}
-                          alt={image.alt}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {/* Product Images - Using Carousel */}
+              <div>
+                <ImageCarousel
+                  images={product.images.map(img => img.url)}
+                  alt={product.name}
+                />
               </div>
 
               {/* Product Info */}
@@ -193,12 +173,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   </div>
                 )}
 
-                <h1 className="text-4xl font-bold text-gray-900">{product.name}</h1>
-
-                <div
-                  className="text-lg text-gray-600"
-                  dangerouslySetInnerHTML={{ __html: product.description }}
-                />
+                <h1 className="text-3xl lg:text-4xl font-bold text-gray-900">{product.name}</h1>
 
                 {/* Price */}
                 <div className="flex items-center gap-4">
@@ -219,7 +194,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   rel="noopener noreferrer"
                   className="block"
                 >
-                  <Button size="lg" className="w-full">
+                  <Button size="lg" className="w-full text-base font-semibold py-6">
                     Buy Now
                   </Button>
                 </a>
@@ -239,6 +214,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     </div>
                   </div>
                 )}
+
+                {/* Expandable Item Details Section */}
+                <ProductDetailsSection description={product.description} />
               </div>
             </div>
           </div>

@@ -242,7 +242,7 @@ function ProductCard({ product }: { product: Product }) {
         {/* Product Info */}
         <div className="space-y-2">
           {/* Title */}
-          <h3 className="text-base font-semibold text-gray-900 group-hover:text-pink-600 transition-colors">
+          <h3 className="text-lg font-bold text-gray-900 transition-colors">
             {product.name}
           </h3>
           
