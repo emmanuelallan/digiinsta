@@ -71,10 +71,10 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
   const { fetchAllTaxonomies, addToCache } = useTaxonomyCache();
 
   // Taxonomy selections
-  const [productTypeId, setProductTypeId] = useState<string>('');
+  const [productTypeIds, setProductTypeIds] = useState<string[]>([]);
   const [formatIds, setFormatIds] = useState<string[]>([]);
-  const [occasionId, setOccasionId] = useState<string>('');
-  const [collectionId, setCollectionId] = useState<string>('');
+  const [occasionIds, setOccasionIds] = useState<string[]>([]);
+  const [collectionIds, setCollectionIds] = useState<string[]>([]);
 
   // Taxonomy options
   const [productTypes, setProductTypes] = useState<TaxonomyOption[]>([]);
@@ -107,11 +107,11 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
         if (data.success) {
           setProduct(data.product);
           
-          // Set initial selections
-          setProductTypeId(data.product.productType?.id || '');
-          setFormatIds(data.product.formats?.map((f: { id: string; title: string }) => f.id) || []);
-          setOccasionId(data.product.occasion?.id || '');
-          setCollectionId(data.product.collection?.id || '');
+          // Set initial selections - now all are arrays for many-to-many
+          setProductTypeIds(data.product.productTypes?.map((pt: { id: string }) => pt.id) || []);
+          setFormatIds(data.product.formats?.map((f: { id: string }) => f.id) || []);
+          setOccasionIds(data.product.occasions?.map((o: { id: string }) => o.id) || []);
+          setCollectionIds(data.product.collections?.map((c: { id: string }) => c.id) || []);
         } else {
           toast.error('Failed to load product');
           router.push('/admin/dashboard');
@@ -282,7 +282,7 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
           // Add new taxonomy to lists
           if (type === 'product_type') {
             setProductTypes((prev) => [...prev, taxonomy]);
-            setProductTypeId(taxonomy.id);
+            setProductTypeIds((prev) => [...prev, taxonomy.id]);
             addToCache('product_type', taxonomy);
           } else if (type === 'format') {
             setFormats((prev) => [...prev, taxonomy]);
@@ -290,11 +290,11 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
             addToCache('format', taxonomy);
           } else if (type === 'occasion') {
             setOccasions((prev) => [...prev, taxonomy]);
-            setOccasionId(taxonomy.id);
+            setOccasionIds((prev) => [...prev, taxonomy.id]);
             addToCache('occasion', taxonomy);
           } else if (type === 'collection') {
             setCollections((prev) => [...prev, taxonomy]);
-            setCollectionId(taxonomy.id);
+            setCollectionIds((prev) => [...prev, taxonomy.id]);
             addToCache('collection', taxonomy);
           }
           toast.success(`${type.replace('_', ' ')} created successfully`);
@@ -319,10 +319,10 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          productTypeId: productTypeId || null,
+          productTypeIds: productTypeIds.length > 0 ? productTypeIds : [],
           formatIds: formatIds.length > 0 ? formatIds : [],
-          occasionId: occasionId || null,
-          collectionId: collectionId || null,
+          occasionIds: occasionIds.length > 0 ? occasionIds : [],
+          collectionIds: collectionIds.length > 0 ? collectionIds : [],
         }),
       });
 
@@ -339,11 +339,11 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
           // Update product state
           setProduct(productData.product);
           
-          // Update taxonomy selections from fresh data
-          setProductTypeId(productData.product.productType?.id || '');
+          // Update taxonomy selections from fresh data - all are arrays now
+          setProductTypeIds(productData.product.productTypes?.map((pt: { id: string }) => pt.id) || []);
           setFormatIds(productData.product.formats?.map((f: { id: string }) => f.id) || []);
-          setOccasionId(productData.product.occasion?.id || '');
-          setCollectionId(productData.product.collection?.id || '');
+          setOccasionIds(productData.product.occasions?.map((o: { id: string }) => o.id) || []);
+          setCollectionIds(productData.product.collections?.map((c: { id: string }) => c.id) || []);
         }
       } else {
         toast.error(data.error || 'Failed to save product enhancements');
@@ -613,10 +613,11 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
               {/* Product Type */}
               <TaxonomySelector
                 type="product_type"
-                label="Product Type"
-                value={productTypeId}
-                onChange={(value) => setProductTypeId(value as string)}
+                label="Product Types"
+                value={productTypeIds}
+                onChange={(value) => setProductTypeIds(value as string[])}
                 options={productTypes}
+                multiple
                 onAddNew={() => handleOpenDialog('product_type')}
                 onEdit={(id) => handleEditTaxonomy('product_type', id)}
               />
@@ -635,10 +636,11 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
               {/* Occasion */}
               <TaxonomySelector
                 type="occasion"
-                label="Occasion"
-                value={occasionId}
-                onChange={(value) => setOccasionId(value as string)}
+                label="Occasions"
+                value={occasionIds}
+                onChange={(value) => setOccasionIds(value as string[])}
                 options={occasions}
+                multiple
                 onAddNew={() => handleOpenDialog('occasion')}
                 onEdit={(id) => handleEditTaxonomy('occasion', id)}
               />
@@ -646,10 +648,11 @@ export default function ProductEditPage({ params }: { params: Promise<{ id: stri
               {/* Collection */}
               <TaxonomySelector
                 type="collection"
-                label="Collection"
-                value={collectionId}
-                onChange={(value) => setCollectionId(value as string)}
+                label="Collections"
+                value={collectionIds}
+                onChange={(value) => setCollectionIds(value as string[])}
                 options={collections}
+                multiple
                 onAddNew={() => handleOpenDialog('collection')}
                 onEdit={(id) => handleEditTaxonomy('collection', id)}
               />

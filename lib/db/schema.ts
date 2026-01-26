@@ -14,7 +14,8 @@ export const products = pgTable('products', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
   
-  // Taxonomy associations (foreign keys)
+  // Legacy foreign keys - kept for backward compatibility during migration
+  // These will be deprecated in favor of many-to-many relationships
   productTypeId: uuid('product_type_id').references(() => productTypes.id),
   occasionId: uuid('occasion_id').references(() => occasions.id),
   collectionId: uuid('collection_id').references(() => collections.id),
@@ -50,6 +51,39 @@ export const productFormats = pgTable('product_formats', {
   // Indexes for join queries
   productIdx: index('product_formats_product_idx').on(table.productId),
   formatIdx: index('product_formats_format_idx').on(table.formatId),
+}));
+
+// Many-to-many relationship for products and collections
+export const productCollections = pgTable('product_collections', {
+  productId: uuid('product_id').references(() => products.id, { onDelete: 'cascade' }).notNull(),
+  collectionId: uuid('collection_id').references(() => collections.id, { onDelete: 'cascade' }).notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.productId, table.collectionId] }),
+  // Indexes for join queries
+  productIdx: index('product_collections_product_idx').on(table.productId),
+  collectionIdx: index('product_collections_collection_idx').on(table.collectionId),
+}));
+
+// Many-to-many relationship for products and occasions
+export const productOccasions = pgTable('product_occasions', {
+  productId: uuid('product_id').references(() => products.id, { onDelete: 'cascade' }).notNull(),
+  occasionId: uuid('occasion_id').references(() => occasions.id, { onDelete: 'cascade' }).notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.productId, table.occasionId] }),
+  // Indexes for join queries
+  productIdx: index('product_occasions_product_idx').on(table.productId),
+  occasionIdx: index('product_occasions_occasion_idx').on(table.occasionId),
+}));
+
+// Many-to-many relationship for products and product types
+export const productProductTypes = pgTable('product_product_types', {
+  productId: uuid('product_id').references(() => products.id, { onDelete: 'cascade' }).notNull(),
+  productTypeId: uuid('product_type_id').references(() => productTypes.id, { onDelete: 'cascade' }).notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.productId, table.productTypeId] }),
+  // Indexes for join queries
+  productIdx: index('product_product_types_product_idx').on(table.productId),
+  productTypeIdx: index('product_product_types_product_type_idx').on(table.productTypeId),
 }));
 
 // Occasions table (Complex Taxonomy)

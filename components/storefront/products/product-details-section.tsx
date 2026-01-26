@@ -13,9 +13,6 @@ interface ProductDetailsSectionProps {
 export function ProductDetailsSection({ description, className }: ProductDetailsSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Parse the description to extract sections
-  const sections = parseDescriptionSections(description);
-  
   // Show first 300 characters when collapsed
   const previewText = getPlainText(description).substring(0, 300);
   const shouldShowReadMore = getPlainText(description).length > 300;
@@ -35,21 +32,11 @@ export function ProductDetailsSection({ description, className }: ProductDetails
       </button>
 
       {isExpanded ? (
-        <div className="mt-6 space-y-8">
-          {sections.map((section, index) => (
-            <div key={index} className="space-y-3">
-              {section.title && (
-                <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                  <span>{section.emoji}</span>
-                  <span>{section.title}</span>
-                </h3>
-              )}
-              <div
-                className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: section.content }}
-              />
-            </div>
-          ))}
+        <div className="mt-6">
+          <div
+            className="text-sm text-gray-600 leading-relaxed prose prose-sm max-w-none prose-headings:text-gray-900 prose-headings:font-semibold prose-h3:text-base prose-h3:mt-6 prose-h3:mb-3 prose-p:my-2 prose-ul:my-2 prose-ol:my-2"
+            dangerouslySetInnerHTML={{ __html: description }}
+          />
         </div>
       ) : (
         <div className="mt-4">
@@ -72,93 +59,9 @@ export function ProductDetailsSection({ description, className }: ProductDetails
   );
 }
 
-interface Section {
-  emoji: string;
-  title: string;
-  content: string;
-}
-
-function parseDescriptionSections(html: string): Section[] {
-  const sections: Section[] = [];
-  
-  // Common section patterns
-  const patterns = [
-    { emoji: "📝", title: "FULL PRODUCT DESCRIPTION", keywords: ["FULL PRODUCT DESCRIPTION", "DESCRIPTION", "ABOUT"] },
-    { emoji: "💡", title: "WHAT MAKES THIS SPECIAL", keywords: ["WHAT MAKES THIS SPECIAL", "WHY THIS", "SPECIAL"] },
-    { emoji: "📦", title: "WHAT'S INCLUDED", keywords: ["WHAT'S INCLUDED", "INCLUDED", "YOU'LL GET"] },
-    { emoji: "🛠️", title: "FILE FORMAT & DELIVERY", keywords: ["FILE FORMAT", "DELIVERY", "FORMAT", "HOW TO USE"] },
-  ];
-
-  // Split by common section markers
-  const parts = html.split(/(?=📝|💡|📦|🛠️|<h[1-6]|<strong>)/gi);
-  
-  let currentSection: Section | null = null;
-
-  for (const part of parts) {
-    const trimmedPart = part.trim();
-    if (!trimmedPart) continue;
-
-    // Check if this part starts a new section
-    let foundSection = false;
-    for (const pattern of patterns) {
-      const hasKeyword = pattern.keywords.some(keyword => 
-        trimmedPart.toUpperCase().includes(keyword)
-      );
-      
-      if (hasKeyword || trimmedPart.startsWith(pattern.emoji)) {
-        // Save previous section
-        if (currentSection && currentSection.content) {
-          sections.push(currentSection);
-        }
-        
-        // Start new section
-        currentSection = {
-          emoji: pattern.emoji,
-          title: pattern.title,
-          content: trimmedPart.replace(new RegExp(`${pattern.emoji}\\s*`, 'g'), '')
-                            .replace(new RegExp(pattern.keywords.join('|'), 'gi'), '')
-                            .trim(),
-        };
-        foundSection = true;
-        break;
-      }
-    }
-
-    // If no section found, add to current section or create default
-    if (!foundSection) {
-      if (currentSection) {
-        currentSection.content += '\n' + trimmedPart;
-      } else {
-        currentSection = {
-          emoji: "",
-          title: "",
-          content: trimmedPart,
-        };
-      }
-    }
-  }
-
-  // Add last section
-  if (currentSection && currentSection.content) {
-    sections.push(currentSection);
-  }
-
-  // If no sections were found, return the whole description as one section
-  if (sections.length === 0) {
-    sections.push({
-      emoji: "",
-      title: "",
-      content: html,
-    });
-  }
-
-  return sections;
-}
-
 function getPlainText(html: string): string {
   return html
     .replace(/<[^>]*>/g, " ")
     .replace(/\s+/g, " ")
-    .replace(/📝|💡|📦|🛠️/g, "")
     .trim();
 }

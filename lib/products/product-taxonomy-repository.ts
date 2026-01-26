@@ -2,21 +2,33 @@
  * Product Taxonomy Repository
  * 
  * Manages associations between products and taxonomies using Drizzle ORM.
- * Handles many-to-many relationships for formats and foreign key relationships
- * for product types, occasions, and collections.
+ * Handles many-to-many relationships for all taxonomies (formats, product types,
+ * occasions, and collections).
  */
 
-import { db, products, productFormats, productTypes, formats, occasions, collections } from '@/lib/db';
+import { 
+  db, 
+  products, 
+  productFormats, 
+  productProductTypes,
+  productOccasions,
+  productCollections,
+  productTypes, 
+  formats, 
+  occasions, 
+  collections 
+} from '@/lib/db';
 import { eq, inArray } from 'drizzle-orm';
 
 /**
  * Input for updating product taxonomy associations
+ * All taxonomies now support multiple selections (many-to-many)
  */
 export interface ProductTaxonomyAssociations {
-  productTypeId?: string | null;
+  productTypeIds?: string[];
   formatIds?: string[];
-  occasionId?: string | null;
-  collectionId?: string | null;
+  occasionIds?: string[];
+  collectionIds?: string[];
 }
 
 /**
@@ -32,30 +44,30 @@ export interface EnhancedProduct {
   images: string[];
   createdAt: Date;
   updatedAt: Date;
-  productType?: {
+  productTypes: Array<{
     id: string;
     title: string;
     createdAt: Date;
-  } | null;
+  }>;
   formats: Array<{
     id: string;
     title: string;
     createdAt: Date;
   }>;
-  occasion?: {
+  occasions: Array<{
     id: string;
     title: string;
     description: string;
     imageUrl: string;
     createdAt: Date;
-  } | null;
-  collection?: {
+  }>;
+  collections: Array<{
     id: string;
     title: string;
     description: string;
     imageUrl: string;
     createdAt: Date;
-  } | null;
+  }>;
   isEnhanced: boolean;
 }
 
@@ -66,30 +78,34 @@ export class ProductTaxonomyRepository {
   /**
    * Update product taxonomy associations atomically
    * Uses a transaction to ensure all-or-nothing updates
+   * All taxonomies now use many-to-many relationships
    */
   async updateProductTaxonomies(
     productId: string,
     associations: ProductTaxonomyAssociations
   ): Promise<void> {
     await db.transaction(async (tx) => {
-      // Update foreign key relationships (product type, occasion, collection)
+      // Update the product's updatedAt timestamp
       await tx
         .update(products)
         .set({
-          productTypeId: associations.productTypeId ?? null,
-          occasionId: associations.occasionId ?? null,
-          collectionId: associations.collectionId ?? null,
           updatedAt: new Date(),
         })
         .where(eq(products.id, productId));
 
-      // Handle many-to-many formats relationship
-      // First, delete existing format associations
-      await tx
-        .delete(productFormats)
-        .where(eq(productFormats.productId, productId));
+      // Handle many-to-many product types relationship
+      await tx.delete(productProductTypes).where(eq(productProductTypes.productId, productId));
+      if (associations.productTypeIds && associations.productTypeIds.length > 0) {
+        await tx.insert(productProductTypes).values(
+          associations.productTypeIds.map((productTypeId) => ({
+            productId,
+            productTypeId,
+          }))
+        );
+      }
 
-      // Then, insert new format associations if any
+      // Handle many-to-many formats relationship
+      await tx.delete(productFormats).where(eq(productFormats.productId, productId));
       if (associations.formatIds && associations.formatIds.length > 0) {
         await tx.insert(productFormats).values(
           associations.formatIds.map((formatId) => ({
@@ -98,11 +114,34 @@ export class ProductTaxonomyRepository {
           }))
         );
       }
+
+      // Handle many-to-many occasions relationship
+      await tx.delete(productOccasions).where(eq(productOccasions.productId, productId));
+      if (associations.occasionIds && associations.occasionIds.length > 0) {
+        await tx.insert(productOccasions).values(
+          associations.occasionIds.map((occasionId) => ({
+            productId,
+            occasionId,
+          }))
+        );
+      }
+
+      // Handle many-to-many collections relationship
+      await tx.delete(productCollections).where(eq(productCollections.productId, productId));
+      if (associations.collectionIds && associations.collectionIds.length > 0) {
+        await tx.insert(productCollections).values(
+          associations.collectionIds.map((collectionId) => ({
+            productId,
+            collectionId,
+          }))
+        );
+      }
     });
   }
 
   /**
    * Get a product with all its associated taxonomies
+   * All taxonomies now use many-to-many relationships
    */
   async getProductWithTaxonomies(productId: string): Promise<EnhancedProduct | null> {
     // Get the product
@@ -116,16 +155,16 @@ export class ProductTaxonomyRepository {
       return null;
     }
 
-    // Get associated product type
-    let productType = null;
-    if (product.productTypeId) {
-      const [pt] = await db
-        .select()
-        .from(productTypes)
-        .where(eq(productTypes.id, product.productTypeId))
-        .limit(1);
-      productType = pt || null;
-    }
+    // Get associated product types (many-to-many)
+    const productTypeAssociations = await db
+      .select({
+        id: productTypes.id,
+        title: productTypes.title,
+        createdAt: productTypes.createdAt,
+      })
+      .from(productProductTypes)
+      .innerJoin(productTypes, eq(productProductTypes.productTypeId, productTypes.id))
+      .where(eq(productProductTypes.productId, productId));
 
     // Get associated formats (many-to-many)
     const formatAssociations = await db
@@ -138,34 +177,38 @@ export class ProductTaxonomyRepository {
       .innerJoin(formats, eq(productFormats.formatId, formats.id))
       .where(eq(productFormats.productId, productId));
 
-    // Get associated occasion
-    let occasion = null;
-    if (product.occasionId) {
-      const [occ] = await db
-        .select()
-        .from(occasions)
-        .where(eq(occasions.id, product.occasionId))
-        .limit(1);
-      occasion = occ || null;
-    }
+    // Get associated occasions (many-to-many)
+    const occasionAssociations = await db
+      .select({
+        id: occasions.id,
+        title: occasions.title,
+        description: occasions.description,
+        imageUrl: occasions.imageUrl,
+        createdAt: occasions.createdAt,
+      })
+      .from(productOccasions)
+      .innerJoin(occasions, eq(productOccasions.occasionId, occasions.id))
+      .where(eq(productOccasions.productId, productId));
 
-    // Get associated collection
-    let collection = null;
-    if (product.collectionId) {
-      const [coll] = await db
-        .select()
-        .from(collections)
-        .where(eq(collections.id, product.collectionId))
-        .limit(1);
-      collection = coll || null;
-    }
+    // Get associated collections (many-to-many)
+    const collectionAssociations = await db
+      .select({
+        id: collections.id,
+        title: collections.title,
+        description: collections.description,
+        imageUrl: collections.imageUrl,
+        createdAt: collections.createdAt,
+      })
+      .from(productCollections)
+      .innerJoin(collections, eq(productCollections.collectionId, collections.id))
+      .where(eq(productCollections.productId, productId));
 
     // Determine if product is enhanced (has any taxonomy associations)
     const isEnhanced = !!(
-      productType ||
+      productTypeAssociations.length > 0 ||
       formatAssociations.length > 0 ||
-      occasion ||
-      collection
+      occasionAssociations.length > 0 ||
+      collectionAssociations.length > 0
     );
 
     return {
@@ -178,10 +221,10 @@ export class ProductTaxonomyRepository {
       images: product.images,
       createdAt: product.createdAt,
       updatedAt: product.updatedAt,
-      productType,
+      productTypes: productTypeAssociations,
       formats: formatAssociations,
-      occasion,
-      collection,
+      occasions: occasionAssociations,
+      collections: collectionAssociations,
       isEnhanced,
     };
   }
@@ -206,20 +249,19 @@ export class ProductTaxonomyRepository {
     // For each product, check if it has any taxonomy associations
     const productsWithStatus = await Promise.all(
       allProducts.map(async (product) => {
-        // Check if product has any taxonomy associations
-        const hasProductType = !!product.productTypeId;
-        const hasOccasion = !!product.occasionId;
-        const hasCollection = !!product.collectionId;
+        // Check if product has any taxonomy associations in junction tables
+        const [productTypeCount, formatCount, occasionCount, collectionCount] = await Promise.all([
+          db.select().from(productProductTypes).where(eq(productProductTypes.productId, product.id)),
+          db.select().from(productFormats).where(eq(productFormats.productId, product.id)),
+          db.select().from(productOccasions).where(eq(productOccasions.productId, product.id)),
+          db.select().from(productCollections).where(eq(productCollections.productId, product.id)),
+        ]);
 
-        // Check if product has any format associations
-        const formatCount = await db
-          .select()
-          .from(productFormats)
-          .where(eq(productFormats.productId, product.id));
-
-        const hasFormats = formatCount.length > 0;
-
-        const isEnhanced = hasProductType || hasOccasion || hasCollection || hasFormats;
+        const isEnhanced = 
+          productTypeCount.length > 0 || 
+          formatCount.length > 0 || 
+          occasionCount.length > 0 || 
+          collectionCount.length > 0;
 
         return {
           ...product,
@@ -240,15 +282,17 @@ export class ProductTaxonomyRepository {
   }> {
     const errors: string[] = [];
 
-    // Validate product type ID
-    if (associations.productTypeId) {
-      const [pt] = await db
+    // Validate product type IDs
+    if (associations.productTypeIds && associations.productTypeIds.length > 0) {
+      const foundProductTypes = await db
         .select()
         .from(productTypes)
-        .where(eq(productTypes.id, associations.productTypeId))
-        .limit(1);
-      if (!pt) {
-        errors.push(`Product type with ID ${associations.productTypeId} not found`);
+        .where(inArray(productTypes.id, associations.productTypeIds));
+      
+      if (foundProductTypes.length !== associations.productTypeIds.length) {
+        const foundIds = foundProductTypes.map((pt) => pt.id);
+        const missingIds = associations.productTypeIds.filter((id) => !foundIds.includes(id));
+        errors.push(`Product type IDs not found: ${missingIds.join(', ')}`);
       }
     }
 
@@ -266,27 +310,31 @@ export class ProductTaxonomyRepository {
       }
     }
 
-    // Validate occasion ID
-    if (associations.occasionId) {
-      const [occ] = await db
+    // Validate occasion IDs
+    if (associations.occasionIds && associations.occasionIds.length > 0) {
+      const foundOccasions = await db
         .select()
         .from(occasions)
-        .where(eq(occasions.id, associations.occasionId))
-        .limit(1);
-      if (!occ) {
-        errors.push(`Occasion with ID ${associations.occasionId} not found`);
+        .where(inArray(occasions.id, associations.occasionIds));
+      
+      if (foundOccasions.length !== associations.occasionIds.length) {
+        const foundIds = foundOccasions.map((o) => o.id);
+        const missingIds = associations.occasionIds.filter((id) => !foundIds.includes(id));
+        errors.push(`Occasion IDs not found: ${missingIds.join(', ')}`);
       }
     }
 
-    // Validate collection ID
-    if (associations.collectionId) {
-      const [coll] = await db
+    // Validate collection IDs
+    if (associations.collectionIds && associations.collectionIds.length > 0) {
+      const foundCollections = await db
         .select()
         .from(collections)
-        .where(eq(collections.id, associations.collectionId))
-        .limit(1);
-      if (!coll) {
-        errors.push(`Collection with ID ${associations.collectionId} not found`);
+        .where(inArray(collections.id, associations.collectionIds));
+      
+      if (foundCollections.length !== associations.collectionIds.length) {
+        const foundIds = foundCollections.map((c) => c.id);
+        const missingIds = associations.collectionIds.filter((id) => !foundIds.includes(id));
+        errors.push(`Collection IDs not found: ${missingIds.join(', ')}`);
       }
     }
 

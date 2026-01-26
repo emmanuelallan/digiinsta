@@ -5,14 +5,14 @@ import { ProductEnhancementService } from '@/lib/products';
  * PUT /api/products/:id/enhance
  * 
  * Updates a product's taxonomy associations.
- * Accepts product type, formats, occasion, and collection IDs.
+ * Accepts product types, formats, occasions, and collections IDs (all as arrays for many-to-many).
  * 
  * Request body:
  * {
- *   productTypeId?: string | null,
+ *   productTypeIds?: string[],
  *   formatIds?: string[],
- *   occasionId?: string | null,
- *   collectionId?: string | null
+ *   occasionIds?: string[],
+ *   collectionIds?: string[]
  * }
  * 
  * Returns:
@@ -30,18 +30,17 @@ export async function PUT(
 
     // Parse request body
     const body = await request.json();
-    const { productTypeId, formatIds, occasionId, collectionId } = body;
+    const { productTypeIds, formatIds, occasionIds, collectionIds } = body;
 
-    // Validate request body structure
+    // Validate request body structure - all should be arrays now
     if (
-      productTypeId !== undefined && 
-      productTypeId !== null && 
-      typeof productTypeId !== 'string'
+      productTypeIds !== undefined && 
+      (!Array.isArray(productTypeIds) || !productTypeIds.every((id) => typeof id === 'string'))
     ) {
       return NextResponse.json(
         {
           success: false,
-          error: 'productTypeId must be a string or null',
+          error: 'productTypeIds must be an array of strings',
         },
         { status: 400 }
       );
@@ -61,28 +60,26 @@ export async function PUT(
     }
 
     if (
-      occasionId !== undefined && 
-      occasionId !== null && 
-      typeof occasionId !== 'string'
+      occasionIds !== undefined && 
+      (!Array.isArray(occasionIds) || !occasionIds.every((id) => typeof id === 'string'))
     ) {
       return NextResponse.json(
         {
           success: false,
-          error: 'occasionId must be a string or null',
+          error: 'occasionIds must be an array of strings',
         },
         { status: 400 }
       );
     }
 
     if (
-      collectionId !== undefined && 
-      collectionId !== null && 
-      typeof collectionId !== 'string'
+      collectionIds !== undefined && 
+      (!Array.isArray(collectionIds) || !collectionIds.every((id) => typeof id === 'string'))
     ) {
       return NextResponse.json(
         {
           success: false,
-          error: 'collectionId must be a string or null',
+          error: 'collectionIds must be an array of strings',
         },
         { status: 400 }
       );
@@ -93,10 +90,10 @@ export async function PUT(
 
     // Enhance the product
     const result = await enhancementService.enhanceProduct(id, {
-      productTypeId: productTypeId ?? undefined,
+      productTypeIds: productTypeIds ?? undefined,
       formatIds: formatIds ?? undefined,
-      occasionId: occasionId ?? undefined,
-      collectionId: collectionId ?? undefined,
+      occasionIds: occasionIds ?? undefined,
+      collectionIds: collectionIds ?? undefined,
     });
 
     if (!result.success) {
