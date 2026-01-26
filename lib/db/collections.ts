@@ -37,24 +37,19 @@ export async function getCollectionBySlug(slug: string): Promise<Collection | nu
       return null;
     }
 
-    // Convert slug to title format (replace hyphens with spaces)
-    const titleFromSlug = slug.split('-').join(' ');
-
-    // Get all collections and find matching one (case-insensitive)
-    const allCollections = await db
+    // Query collection by slug field
+    const result = await db
       .select()
-      .from(collections);
+      .from(collections)
+      .where(eq(collections.slug, slug))
+      .limit(1);
 
-    const matchingCollection = allCollections.find(
-      c => c.title.toLowerCase() === titleFromSlug.toLowerCase()
-    );
-
-    if (!matchingCollection) {
-      console.log(`No collection found for slug: ${slug} (looking for title: ${titleFromSlug})`);
+    if (result.length === 0) {
+      console.log(`No collection found for slug: ${slug}`);
       return null;
     }
 
-    return mapToStorefrontCollection(matchingCollection);
+    return mapToStorefrontCollection(result[0]);
   } catch (error) {
     console.error('Error fetching collection by slug:', error);
     return null;
@@ -67,8 +62,8 @@ export async function getCollectionBySlug(slug: string): Promise<Collection | nu
 function mapToStorefrontCollection(
   collection: typeof collections.$inferSelect
 ): Collection {
-  // Generate slug from title
-  const slug = collection.title.toLowerCase().replace(/\s+/g, '-');
+  // Use the slug from database
+  const slug = collection.slug;
 
   return {
     slug,

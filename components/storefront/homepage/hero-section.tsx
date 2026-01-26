@@ -34,7 +34,7 @@ export function HeroSection({
   subheadline = "Made for couples who want more. Join 200,000+ happy users.",
   ctaText = "SHOP NOW",
   ctaHref = "/collections/valentines",
-  videoSrc = "/images/bgs/hero.mp4",
+  videoSrc = "/images/bgs/hero2.mp4",
   videoPoster = "/images/bgs/hero.webp",
   className,
 }: HeroSectionProps) {
