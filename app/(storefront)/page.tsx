@@ -11,6 +11,10 @@ import {
 import { getBestSellerProducts, getFeaturedProducts, getNewProducts } from "@/lib/db/products";
 import { getAllCollections } from "@/lib/db/collections";
 
+// Force dynamic rendering to always fetch fresh data
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: "Digital love for the heart 💖 | Intentional moments made simple",
   description:
@@ -53,6 +57,8 @@ const whyPeopleLovePoints = [
 ];
 
 export default async function HomePage() {
+  console.log('[HomePage] Fetching homepage data at:', new Date().toISOString());
+  
   // Fetch data for homepage sections
   const [bestSellers, valentineProducts, newProducts, collections] = await Promise.all([
     getBestSellerProducts(4),
@@ -60,6 +66,12 @@ export default async function HomePage() {
     getNewProducts(4),
     getAllCollections(),
   ]);
+
+  console.log('[HomePage] Data fetched:');
+  console.log('  - Best Sellers:', bestSellers.length, 'products');
+  console.log('  - Valentine Products:', valentineProducts.length, 'products');
+  console.log('  - New Products:', newProducts.length, 'products');
+  console.log('  - Collections:', collections.length, 'collections');
 
   // JSON-LD structured data for Organization
   const organizationJsonLd = {

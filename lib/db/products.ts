@@ -223,11 +223,14 @@ export async function getProductsByCollection(collectionSlug: string): Promise<P
  */
 export async function getBestSellerProducts(limit: number = 4): Promise<Product[]> {
   try {
+    console.log('[getBestSellerProducts] Fetching best sellers, limit:', limit);
     const result = await db
       .select()
       .from(products)
       .orderBy(desc(products.updatedAt))
       .limit(limit);
+
+    result.forEach(p => console.log('  -', p.name, 'updated:', p.updatedAt));
 
     return Promise.all(result.map(async (product) => {
       const taxonomies = await getProductTaxonomies(product.id);
@@ -250,11 +253,14 @@ export async function getBestSellerProducts(limit: number = 4): Promise<Product[
  */
 export async function getNewProducts(limit: number = 4): Promise<Product[]> {
   try {
+    console.log('[getNewProducts] Fetching new products, limit:', limit);
     const result = await db
       .select()
       .from(products)
       .orderBy(desc(products.createdAt))
       .limit(limit);
+
+    result.forEach(p => console.log('  -', p.name, 'created:', p.createdAt));
 
     return Promise.all(result.map(async (product) => {
       const taxonomies = await getProductTaxonomies(product.id);
@@ -332,6 +338,7 @@ export async function getRelatedProducts(productId: string, limit: number = 3): 
  */
 export async function getFeaturedProducts(occasion: string, limit: number = 4): Promise<Product[]> {
   try {
+    console.log('[getFeaturedProducts] Fetching featured products for occasion:', occasion, 'limit:', limit);
     // Get the occasion by title
     const [occasionRecord] = await db
       .select()
@@ -340,6 +347,7 @@ export async function getFeaturedProducts(occasion: string, limit: number = 4): 
       .limit(1);
 
     if (!occasionRecord) {
+      console.log('[getFeaturedProducts] Occasion not found:', occasion);
       return [];
     }
 
@@ -348,6 +356,8 @@ export async function getFeaturedProducts(occasion: string, limit: number = 4): 
       .select({ productId: productOccasions.productId })
       .from(productOccasions)
       .where(eq(productOccasions.occasionId, occasionRecord.id));
+
+    console.log('[getFeaturedProducts] Found product IDs:', productIds.length);
 
     if (productIds.length === 0) {
       return [];
@@ -360,6 +370,8 @@ export async function getFeaturedProducts(occasion: string, limit: number = 4): 
       .where(inArray(products.id, productIds.map(p => p.productId)))
       .orderBy(desc(products.createdAt))
       .limit(limit);
+
+    result.forEach(p => console.log('  -', p.name));
 
     return Promise.all(result.map(async (product) => {
       const taxonomies = await getProductTaxonomies(product.id);
