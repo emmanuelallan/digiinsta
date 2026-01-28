@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Josefin_Sans, Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -96,6 +97,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const websiteId = process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID;
+  const scriptUrl = process.env.NEXT_PUBLIC_UMAMI_SCRIPT_URL;
+
   return (
     <html lang="en" className={inter.variable}>
       <body
@@ -103,6 +107,13 @@ export default function RootLayout({
       >
         {children}
         <Toaster />
+        {websiteId && scriptUrl && (
+          <Script
+            strategy="afterInteractive"
+            src={scriptUrl}
+            data-website-id={websiteId}
+          />
+        )}
       </body>
     </html>
   );
