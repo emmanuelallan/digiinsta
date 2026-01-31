@@ -45,7 +45,6 @@ export async function getCollectionBySlug(slug: string): Promise<Collection | nu
       .limit(1);
 
     if (result.length === 0) {
-      console.log(`No collection found for slug: ${slug}`);
       return null;
     }
 

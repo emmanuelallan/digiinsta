@@ -88,6 +88,7 @@ export const metadata: Metadata = {
   verification: {
     other: {
       "facebook-domain-verification": "qarep7ni5a8figt69q8m55kcgvf48r",
+      "p:domain_verify": "cafbf548036070d0fb2a0ec25c697f39",
     },
   },
 };

@@ -57,7 +57,6 @@ const whyPeopleLovePoints = [
 ];
 
 export default async function HomePage() {
-  console.log('[HomePage] Fetching homepage data at:', new Date().toISOString());
   
   // Fetch data for homepage sections
   const [bestSellers, valentineProducts, newProducts, collections] = await Promise.all([
@@ -66,12 +65,6 @@ export default async function HomePage() {
     getNewProducts(4),
     getAllCollections(),
   ]);
-
-  console.log('[HomePage] Data fetched:');
-  console.log('  - Best Sellers:', bestSellers.length, 'products');
-  console.log('  - Valentine Products:', valentineProducts.length, 'products');
-  console.log('  - New Products:', newProducts.length, 'products');
-  console.log('  - Collections:', collections.length, 'collections');
 
   // JSON-LD structured data for Organization
   const organizationJsonLd = {
